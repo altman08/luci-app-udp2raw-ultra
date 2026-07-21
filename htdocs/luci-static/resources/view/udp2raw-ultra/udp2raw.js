@@ -4,6 +4,7 @@
 'require uci';
 'require rpc';
 'require poll';
+'require network';
 
 var callServiceList = rpc.declare({
 	object: 'service',
@@ -25,12 +26,27 @@ function getStatus() {
 return view.extend({
 	load: function () {
 		return Promise.all([
-			uci.load('udp2raw')
+			uci.load('udp2raw'),
+			network.getNetworks(),
+			L.resolveDefault(network.getWANNetworks(), [])
 		]);
 	},
 
-	render: function () {
+	render: function (data) {
 		var m, s, o;
+		var networks = (data && data[1]) || [];
+		var wanNets = (data && data[2]) || [];
+
+		// Detect the current physical WAN logical interface + device.
+		var curWanIface = 'wan';
+		var curWanDev = '';
+		if (wanNets.length) {
+			curWanIface = wanNets[0].getName();
+			curWanDev = wanNets[0].getDevice() ? wanNets[0].getDevice().getName() : '';
+		}
+		var autoLabel = curWanDev
+			? '自动（当前：%s → %s）'.format(curWanIface, curWanDev)
+			: '自动（当前：%s）'.format(curWanIface);
 
 		m = new form.Map('udp2raw', 'UDP2RAW Ultra',
 			'将 UDP 流量伪装成 FakeTCP/UDP/ICMP，绕过 UDP QoS 限速或封锁。可添加多条规则，每条独立作为服务端或客户端。配合 WireGuard/AmneziaWG 使用效果最佳。');
@@ -53,6 +69,23 @@ return view.extend({
 			'每条规则最多保留的日志行数。');
 		o.datatype = 'uinteger';
 		o.default = '100';
+
+		o = s.option(form.Flag, 'bypass_proxy', 'DNS 解析绕过代理',
+			'强制发往上面「解析 DNS」的查询走物理 WAN 出口，不经过任何代理（如 WireGuard）。避免隧道断开后因解析走隧道而无法重连的死锁。除非有特殊分流需求，建议保持开启。');
+		o.default = '1';
+		o.rmempty = false;
+
+		o = s.option(form.ListValue, 'wan_iface', '外网接口',
+			'「DNS 解析绕过代理」使用的物理外网接口。留空为自动检测（默认 wan 接口）。若外网口改过名或有多 WAN，请手动指定。');
+		o.value('', autoLabel);
+		networks.forEach(function (net) {
+			var name = net.getName();
+			if (name === 'loopback' || name.charAt(0) === '@') return;
+			var dev = net.getDevice() ? net.getDevice().getName() : '';
+			o.value(name, dev ? '%s（%s）'.format(name, dev) : name);
+		});
+		o.default = '';
+		o.depends('bypass_proxy', '1');
 
 		// ---- 规则列表 ----
 		s = m.section(form.GridSection, 'rule', '隧道规则',

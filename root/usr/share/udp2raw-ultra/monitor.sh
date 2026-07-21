@@ -5,11 +5,15 @@
 
 . /lib/functions.sh
 
+BYPASS=/usr/share/udp2raw-ultra/bypass.sh
+[ -f "$BYPASS" ] && . "$BYPASS"
+
 STATE_DIR=/var/run/udp2raw-ultra
 mkdir -p "$STATE_DIR"
 
 DNS_SERVER=""
 CHECK_INTERVAL="60"
+BYPASS_PROXY="1"
 
 is_ip_literal() {
 	local addr="$1"
@@ -74,6 +78,8 @@ collect_rule() {
 config_load udp2raw
 config_get DNS_SERVER global dns_server ""
 config_get CHECK_INTERVAL global check_interval "60"
+config_get_bool BYPASS_PROXY global bypass_proxy 1
+config_get UDP2RAW_WAN_IFACE global wan_iface ""
 config_foreach collect_rule rule
 
 # Nothing to monitor -> idle sleep loop (procd keeps us alive cheaply)
@@ -92,6 +98,12 @@ done
 
 while true; do
 	sleep "$CHECK_INTERVAL"
+
+	# Keep the WAN bypass route fresh (PPPoE re-dial can change the gateway).
+	if [ "$BYPASS_PROXY" = "1" ] && [ -n "$DNS_SERVER" ]; then
+		command -v _u2r_refresh_wan_routes >/dev/null 2>&1 && _u2r_refresh_wan_routes
+	fi
+
 	changed=0
 	for entry in $MONITORED; do
 		cfg=$(echo "$entry" | cut -d'|' -f1)

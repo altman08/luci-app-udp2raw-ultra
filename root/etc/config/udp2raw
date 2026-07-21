@@ -4,6 +4,8 @@ config global 'global'
 	option dns_server '2606:4700:4700::1111'
 	option check_interval '60'
 	option log_max '100'
+	option bypass_proxy '1'
+	option wan_iface ''
 
 # Example server rule (this router has a public IP / IPv6)
 #config rule
