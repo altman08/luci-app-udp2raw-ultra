@@ -1,7 +1,7 @@
 # udp2raw-ultra configuration
 # Global options
 config global 'global'
-	option dns_server '2606:4700:4700::1111'
+	option dns_server '1.1.1.1'
 	option check_interval '60'
 	option log_max '100'
 	option bypass_proxy '1'

@@ -56,8 +56,8 @@ return view.extend({
 		s.addremove = false;
 
 		o = s.option(form.Value, 'dns_server', '解析 DNS',
-			'用于解析对端域名的 DNS 服务器，有助于应对动态 IP 抖动。可填 IPv6 DNS。');
-		o.default = '2606:4700:4700::1111';
+			'用于解析对端域名的 DNS 服务器。建议填 IPv4 地址（如 1.1.1.1），同样能解析 IPv6（AAAA）记录；若填 IPv6 DNS，则本机必须有 IPv6 网络否则解析失败。留空则使用系统默认 DNS。解析失败时会自动降级到系统默认 DNS 重试。');
+		o.default = '1.1.1.1';
 		o.rmempty = false;
 
 		o = s.option(form.Value, 'check_interval', '检测间隔（秒）',

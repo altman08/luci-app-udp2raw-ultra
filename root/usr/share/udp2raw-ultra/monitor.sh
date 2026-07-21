@@ -27,24 +27,35 @@ is_ip_literal() {
 	return 1
 }
 
+# Tries the configured DNS first; falls back to the system default resolver
+# if it returns nothing (e.g. IPv6 DNS but no IPv6 WAN, or unreachable).
 resolve_addr() {
 	local domain="$1" family="$2" dns="$3"
 	local ip=""
 
-	_a() {
-		host -t A "$domain" $dns 2>/dev/null | \
+	# $1 = dns server (may be empty => system default resolver)
+	_resolve_a() {
+		host -t A "$domain" $1 2>/dev/null | \
 			awk '/has address/ {print $NF; exit}'
 	}
-	_aaaa() {
-		host -t AAAA "$domain" $dns 2>/dev/null | \
+	_resolve_aaaa() {
+		host -t AAAA "$domain" $1 2>/dev/null | \
 			awk '/has IPv6 address/ {print $NF; exit}'
 	}
 
-	case "$family" in
-		ipv4) ip=$(_a) ;;
-		ipv6) ip=$(_aaaa) ;;
-		*)    ip=$(_a); [ -z "$ip" ] && ip=$(_aaaa) ;;
-	esac
+	_try() {
+		local d="$1"
+		case "$family" in
+			ipv4) _resolve_a "$d" ;;
+			ipv6) _resolve_aaaa "$d" ;;
+			*)    local r=$(_resolve_a "$d"); [ -z "$r" ] && r=$(_resolve_aaaa "$d"); echo "$r" ;;
+		esac
+	}
+
+	ip=$(_try "$dns")
+	if [ -z "$ip" ] && [ -n "$dns" ]; then
+		ip=$(_try "")
+	fi
 	echo "$ip"
 }
 

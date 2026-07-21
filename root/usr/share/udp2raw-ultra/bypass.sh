@@ -31,16 +31,6 @@ u2r_wan_iface() {
 	fi
 }
 
-# Echo the IPv6 WAN logical interface name derived from the v4 one.
-u2r_wan_iface6() {
-	local base="$(u2r_wan_iface)"
-	case "$base" in
-		wan) echo "wan6" ;;
-		*6)  echo "$base" ;;
-		*)   echo "${base}6" ;;
-	esac
-}
-
 # Populate the dedicated table with a default route via the physical WAN.
 # Uses OpenWrt network helpers; falls back gracefully if unavailable.
 _u2r_refresh_wan_routes() {
@@ -48,24 +38,24 @@ _u2r_refresh_wan_routes() {
 	. /lib/functions/network.sh
 	network_flush_cache
 
-	local gw dev gw6 dev6
+	local gw dev gw6
 	local ifc="$(u2r_wan_iface)"
-	local ifc6="$(u2r_wan_iface6)"
 
-	# IPv4 physical WAN
-	network_get_gateway gw "$ifc"
+	# The physical device is the same for IPv4 and IPv6 (one WAN port),
+	# so look it up once. Only the gateway differs per family.
 	network_get_device dev "$ifc"
+
+	# IPv4 route via the physical WAN
+	network_get_gateway gw "$ifc"
 	if [ -n "$gw" ] || [ -n "$dev" ]; then
 		ip route replace default ${gw:+via "$gw"} ${dev:+dev "$dev"} \
 			table "$UDP2RAW_DNS_TABLE" 2>/dev/null
 	fi
 
-	# IPv6 physical WAN
-	network_get_gateway6 gw6 "$ifc6"
-	network_get_device6 dev6 "$ifc6"
-	[ -z "$dev6" ] && network_get_device6 dev6 "$ifc"
-	if [ -n "$gw6" ] || [ -n "$dev6" ]; then
-		ip -6 route replace default ${gw6:+via "$gw6"} ${dev6:+dev "$dev6"} \
+	# IPv6 route via the same physical WAN (only the v6 gateway differs)
+	network_get_gateway6 gw6 "$ifc"
+	if [ -n "$gw6" ] || [ -n "$dev" ]; then
+		ip -6 route replace default ${gw6:+via "$gw6"} ${dev:+dev "$dev"} \
 			table "$UDP2RAW_DNS_TABLE" 2>/dev/null
 	fi
 	return 0
