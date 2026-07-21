@@ -189,10 +189,35 @@ return view.extend({
 
 		// --- 共享加密/混淆参数（两端必须一致）---
 		o = s.option(form.Value, 'password', '密码',
-			'预共享密码，两端必须完全一致。');
+			'预共享密码，两端必须完全一致。点击「生成」可自动创建随机密码。');
 		o.password = true;
 		o.modalonly = true;
 		o.rmempty = false;
+		o.renderWidget = function (section_id, option_index, cfgvalue) {
+			var node = form.Value.prototype.renderWidget.apply(this, arguments);
+			var self = this;
+			var btn = E('button', {
+				'class': 'cbi-button cbi-button-neutral',
+				'style': 'margin-left:6px',
+				'click': function (ev) {
+					ev.preventDefault();
+					var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+					var pw = '';
+					var arr = new Uint32Array(16);
+					(window.crypto || window.msCrypto).getRandomValues(arr);
+					for (var i = 0; i < 16; i++)
+						pw += chars.charAt(arr[i] % chars.length);
+					var input = node.querySelector('input');
+					if (input) {
+						input.value = pw;
+						input.dispatchEvent(new Event('input', { bubbles: true }));
+						input.dispatchEvent(new Event('change', { bubbles: true }));
+					}
+					return false;
+				}
+			}, '生成');
+			return E('div', { 'style': 'display:flex;align-items:center' }, [ node, btn ]);
+		};
 
 		o = s.option(form.ListValue, 'raw_mode', '伪装模式',
 			'数据包伪装方式，两端必须一致。');
