@@ -10,3 +10,11 @@ Makefile text eol=lf
 # init scripts and UCI configs have no extension
 root/etc/init.d/*   text eol=lf
 root/etc/config/*   text eol=lf
+
+# Binary assets - never touch line endings
+*.jpg   binary
+*.jpeg  binary
+*.png   binary
+*.gif   binary
+*.webp  binary
+*.ipk   binary
