@@ -1,0 +1,12 @@
+# Force LF line endings for all shell scripts and config files.
+# OpenWrt/BusyBox ash cannot tolerate CRLF in shebang lines or rc.common.
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+Makefile text eol=lf
+
+# init scripts and UCI configs have no extension
+root/etc/init.d/*   text eol=lf
+root/etc/config/*   text eol=lf

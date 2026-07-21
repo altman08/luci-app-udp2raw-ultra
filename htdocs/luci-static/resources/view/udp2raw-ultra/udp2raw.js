@@ -32,51 +32,51 @@ return view.extend({
 	render: function () {
 		var m, s, o;
 
-		m = new form.Map('udp2raw', _('UDP2RAW Ultra'),
-			_('Tunnel UDP traffic over FakeTCP/UDP/ICMP to bypass UDP QoS/blocking. Add multiple rules, each acting as a server or a client. Works well with WireGuard/AmneziaWG.'));
+		m = new form.Map('udp2raw', 'UDP2RAW Ultra',
+			'将 UDP 流量伪装成 FakeTCP/UDP/ICMP，绕过 UDP QoS 限速或封锁。可添加多条规则，每条独立作为服务端或客户端。配合 WireGuard/AmneziaWG 使用效果最佳。');
 
-		// ---- Global settings ----
-		s = m.section(form.NamedSection, 'global', 'global', _('Global Settings'));
+		// ---- 全局设置 ----
+		s = m.section(form.NamedSection, 'global', 'global', '全局设置');
 		s.addremove = false;
 
-		o = s.option(form.Value, 'dns_server', _('Resolver DNS'),
-			_('DNS server used to resolve peer domains. Helps with unstable dynamic IPs. IPv6 DNS is fine here.'));
+		o = s.option(form.Value, 'dns_server', '解析 DNS',
+			'用于解析对端域名的 DNS 服务器，有助于应对动态 IP 抖动。可填 IPv6 DNS。');
 		o.default = '2606:4700:4700::1111';
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'check_interval', _('Check Interval (s)'),
-			_('How often to re-resolve client domains and restart the tunnel if the peer IP changed.'));
+		o = s.option(form.Value, 'check_interval', '检测间隔（秒）',
+			'多久重新解析一次客户端域名，若对端 IP 变化则自动重启隧道。');
 		o.datatype = 'uinteger';
 		o.default = '60';
 
-		o = s.option(form.Value, 'log_max', _('Log Lines Kept'),
-			_('Maximum number of log lines kept per rule.'));
+		o = s.option(form.Value, 'log_max', '日志保留条数',
+			'每条规则最多保留的日志行数。');
 		o.datatype = 'uinteger';
 		o.default = '100';
 
-		// ---- Rules list ----
-		s = m.section(form.GridSection, 'rule', _('Tunnel Rules'),
-			_('Each rule is an independent udp2raw instance. Server = the side with a public IP/IPv6; Client = the side behind NAT.'));
+		// ---- 规则列表 ----
+		s = m.section(form.GridSection, 'rule', '隧道规则',
+			'每条规则是一个独立的 udp2raw 实例。服务端 = 有公网 IP/IPv6 的一方；客户端 = 处于 NAT 后的一方。');
 		s.addremove = true;
 		s.anonymous = true;
 		s.sortable = true;
 		s.nodescriptions = true;
-		s.addbtntitle = _('Add rule');
+		s.addbtntitle = '添加规则';
 
-		// --- Columns shown in the grid ---
-		o = s.option(form.Flag, 'enabled', _('Enable'));
+		// --- 列表显示的列 ---
+		o = s.option(form.Flag, 'enabled', '启用');
 		o.editable = true;
 
-		o = s.option(form.Value, 'name', _('Name'));
+		o = s.option(form.Value, 'name', '名称');
 		o.rmempty = false;
 		o.placeholder = 'peerA';
 
-		o = s.option(form.ListValue, 'mode', _('Mode'));
-		o.value('server', _('Server'));
-		o.value('client', _('Client'));
+		o = s.option(form.ListValue, 'mode', '模式');
+		o.value('server', '服务端');
+		o.value('client', '客户端');
 		o.default = 'client';
 
-		o = s.option(form.DummyValue, '_target', _('Target'));
+		o = s.option(form.DummyValue, '_target', '目标');
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			var mode = uci.get('udp2raw', section_id, 'mode') || 'client';
@@ -84,15 +84,15 @@ return view.extend({
 				var lp = uci.get('udp2raw', section_id, 'listen_port') || '?';
 				var fa = uci.get('udp2raw', section_id, 'forward_addr') || '127.0.0.1';
 				var fp = uci.get('udp2raw', section_id, 'forward_port') || '?';
-				return _('listen :%s → %s:%s').format(lp, fa, fp);
+				return '监听 :%s → %s:%s'.format(lp, fa, fp);
 			} else {
 				var a = uci.get('udp2raw', section_id, 'address') || '?';
 				var p = uci.get('udp2raw', section_id, 'port') || '?';
-				return _('%s:%s').format(a, p);
+				return '%s:%s'.format(a, p);
 			}
 		};
 
-		o = s.option(form.DummyValue, '_status', _('Status'));
+		o = s.option(form.DummyValue, '_status', '状态');
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			var name = uci.get('udp2raw', section_id, 'name') || section_id;
@@ -103,86 +103,86 @@ return view.extend({
 					if (!el) return;
 					var running = inst[name] && inst[name].running;
 					el.innerHTML = running
-						? '<span style="color:green"><strong>' + _('running') + '</strong></span>'
-						: '<span style="color:#999">' + _('stopped') + '</span>';
+						? '<span style="color:green"><strong>运行中</strong></span>'
+						: '<span style="color:#999">已停止</span>';
 				});
 			});
-			return E('span', { 'id': id }, _('...'));
+			return E('span', { 'id': id }, '...');
 		};
 
-		// ================= Detailed (modal) options =================
+		// ================= 详细（弹窗）选项 =================
 
-		o = s.option(form.ListValue, 'family', _('Address Family'),
-			_('Auto prefers IPv4 (A record), then IPv6 (AAAA). Only one family is used per tunnel.'));
-		o.value('auto', _('Auto (IPv4 first)'));
-		o.value('ipv4', _('IPv4 only'));
-		o.value('ipv6', _('IPv6 only'));
+		o = s.option(form.ListValue, 'family', '地址族',
+			'自动模式优先 IPv4（A 记录），其次 IPv6（AAAA）。每条隧道只使用一种地址族。');
+		o.value('auto', '自动（优先 IPv4）');
+		o.value('ipv4', '仅 IPv4');
+		o.value('ipv6', '仅 IPv6');
 		o.default = 'auto';
 		o.modalonly = true;
 
-		// --- Client-only: peer address/port ---
-		o = s.option(form.Value, 'address', _('Peer Address'),
-			_('Client only. The peer IP or domain. If a domain is entered it is auto-resolved and monitored for changes.'));
+		// --- 客户端专用：对端地址/端口 ---
+		o = s.option(form.Value, 'address', '对端地址',
+			'仅客户端。对端的 IP 或域名。填域名时会自动解析并监控其变化。');
 		o.depends('mode', 'client');
 		o.modalonly = true;
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'port', _('Peer Port'),
-			_('Client only. The udp2raw port on the peer (server listen port).'));
+		o = s.option(form.Value, 'port', '对端端口',
+			'仅客户端。对端上的 udp2raw 端口（即服务端的监听端口）。');
 		o.datatype = 'port';
 		o.depends('mode', 'client');
 		o.modalonly = true;
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'listen_addr', _('Local Listen Address'),
-			_('Client only. Local address to expose the tunnel UDP endpoint. Usually 127.0.0.1.'));
+		o = s.option(form.Value, 'listen_addr', '本地监听地址',
+			'仅客户端。本地暴露隧道 UDP 端点的地址，通常为 127.0.0.1。');
 		o.placeholder = '127.0.0.1';
 		o.depends('mode', 'client');
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'listen_port', _('Listen Port'),
-			_('Server: the public FakeTCP/UDP/ICMP port to listen on. Client: local UDP port your app (e.g. WireGuard peer endpoint) connects to.'));
+		o = s.option(form.Value, 'listen_port', '监听端口',
+			'服务端：对外监听的 FakeTCP/UDP/ICMP 端口。客户端：本地应用（如 WireGuard 对端端点）连接的 UDP 端口。');
 		o.datatype = 'port';
 		o.modalonly = true;
 		o.rmempty = false;
 
-		// --- Server-only: forward target ---
-		o = s.option(form.Value, 'forward_addr', _('Forward To Address'),
-			_('Server only. The real local UDP service to forward to (e.g. 127.0.0.1 for local WireGuard).'));
+		// --- 服务端专用：转发目标 ---
+		o = s.option(form.Value, 'forward_addr', '转发到地址',
+			'仅服务端。要转发到的真实本地 UDP 服务地址（如本地 WireGuard 填 127.0.0.1）。');
 		o.placeholder = '127.0.0.1';
 		o.depends('mode', 'server');
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'forward_port', _('Forward To Port'),
-			_('Server only. The real UDP service port (e.g. 51820 for WireGuard/AmneziaWG).'));
+		o = s.option(form.Value, 'forward_port', '转发到端口',
+			'仅服务端。真实 UDP 服务端口（如 WireGuard/AmneziaWG 的 51820）。');
 		o.datatype = 'port';
 		o.depends('mode', 'server');
 		o.modalonly = true;
 		o.rmempty = false;
 
-		// --- Shared crypto/obfuscation (must match on both sides) ---
-		o = s.option(form.Value, 'password', _('Password'),
-			_('Pre-shared password. Must be identical on both sides.'));
+		// --- 共享加密/混淆参数（两端必须一致）---
+		o = s.option(form.Value, 'password', '密码',
+			'预共享密码，两端必须完全一致。');
 		o.password = true;
 		o.modalonly = true;
 		o.rmempty = false;
 
-		o = s.option(form.ListValue, 'raw_mode', _('Raw Mode'),
-			_('Packet disguise. Must match on both sides.'));
+		o = s.option(form.ListValue, 'raw_mode', '伪装模式',
+			'数据包伪装方式，两端必须一致。');
 		o.value('faketcp', 'faketcp');
 		o.value('udp', 'udp');
 		o.value('icmp', 'icmp');
 		o.default = 'faketcp';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'cipher_mode', _('Cipher Mode'));
+		o = s.option(form.ListValue, 'cipher_mode', '加密方式');
 		o.value('aes128cbc', 'aes128cbc');
 		o.value('xor', 'xor');
 		o.value('none', 'none');
 		o.default = 'aes128cbc';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'auth_mode', _('Auth Mode'));
+		o = s.option(form.ListValue, 'auth_mode', '认证方式');
 		o.value('md5', 'md5');
 		o.value('crc32', 'crc32');
 		o.value('simple', 'simple');
@@ -190,8 +190,8 @@ return view.extend({
 		o.default = 'md5';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'seq_mode', _('Seq Mode'),
-			_('faketcp seq mode (0-4). 3 simulates a near-real TCP handshake.'));
+		o = s.option(form.ListValue, 'seq_mode', 'Seq 模式',
+			'faketcp 的 seq 模式（0-4）。3 模拟接近真实的 TCP 握手过程。');
 		o.value('0', '0');
 		o.value('1', '1');
 		o.value('2', '2');
@@ -201,39 +201,39 @@ return view.extend({
 		o.depends('raw_mode', 'faketcp');
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'sock_buf', _('Socket Buffer (KB)'),
-			_('Socket buffer size, 10-10240. Bigger is not always better. Default 1024.'));
+		o = s.option(form.Value, 'sock_buf', 'Socket 缓冲区（KB）',
+			'Socket 缓冲区大小，范围 10-10240。并非越大越好，默认 1024。');
 		o.datatype = 'range(10,10240)';
 		o.default = '1024';
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'auto_rule', _('Auto Firewall Rule'),
-			_('Add iptables rule (-a) to drop RST. Recommended for faketcp.'));
+		o = s.option(form.Flag, 'auto_rule', '自动防火墙规则',
+			'添加 iptables 规则（-a）丢弃 RST 包。faketcp 模式推荐开启。');
 		o.default = '1';
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'retry_on_error', _('Retry On Error'),
-			_('Pass --retry-on-error so udp2raw keeps retrying instead of exiting.'));
+		o = s.option(form.Flag, 'retry_on_error', '出错重试',
+			'传入 --retry-on-error，让 udp2raw 出错时持续重试而非退出。');
 		o.default = '1';
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'fix_gro', _('Fix GRO'),
-			_('Enable --fix-gro. Try if large packets misbehave.'));
+		o = s.option(form.Flag, 'fix_gro', '修复 GRO',
+			'启用 --fix-gro。大包传输异常时可尝试开启。');
 		o.default = '0';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'log_level', _('Log Level'));
-		o.value('0', _('never'));
-		o.value('1', _('fatal'));
-		o.value('2', _('error'));
-		o.value('3', _('warn'));
-		o.value('4', _('info'));
-		o.value('5', _('debug'));
+		o = s.option(form.ListValue, 'log_level', '日志级别');
+		o.value('0', '关闭');
+		o.value('1', '致命');
+		o.value('2', '错误');
+		o.value('3', '警告');
+		o.value('4', '信息');
+		o.value('5', '调试');
 		o.default = '4';
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'extra_args', _('Extra Arguments'),
-			_('Additional raw command line arguments passed to udp2raw.'));
+		o = s.option(form.Value, 'extra_args', '额外参数',
+			'传递给 udp2raw 的额外原始命令行参数。');
 		o.modalonly = true;
 
 		return m.render();
