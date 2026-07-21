@@ -37,16 +37,11 @@ return view.extend({
 		var networks = (data && data[1]) || [];
 		var wanNets = (data && data[2]) || [];
 
-		// Detect the current physical WAN logical interface + device.
+		// Detect the current physical WAN logical interface.
 		var curWanIface = 'wan';
-		var curWanDev = '';
-		if (wanNets.length) {
+		if (wanNets.length)
 			curWanIface = wanNets[0].getName();
-			curWanDev = wanNets[0].getDevice() ? wanNets[0].getDevice().getName() : '';
-		}
-		var autoLabel = curWanDev
-			? '自动（当前：%s → %s）'.format(curWanIface, curWanDev)
-			: '自动（当前：%s）'.format(curWanIface);
+		var autoLabel = '自动（当前 %s）'.format(curWanIface);
 
 		m = new form.Map('udp2raw', 'UDP2RAW Ultra',
 			'将 UDP 流量伪装成 FakeTCP/UDP/ICMP，绕过 UDP QoS 限速或封锁。可添加多条规则，每条独立作为服务端或客户端。配合 WireGuard/AmneziaWG 使用效果最佳。');
@@ -81,8 +76,7 @@ return view.extend({
 		networks.forEach(function (net) {
 			var name = net.getName();
 			if (name === 'loopback' || name.charAt(0) === '@') return;
-			var dev = net.getDevice() ? net.getDevice().getName() : '';
-			o.value(name, dev ? '%s（%s）'.format(name, dev) : name);
+			o.value(name, name);
 		});
 		o.default = '';
 		o.depends('bypass_proxy', '1');
