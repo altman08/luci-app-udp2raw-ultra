@@ -33,14 +33,25 @@ resolve_addr() {
 	local domain="$1" family="$2" dns="$3"
 	local ip=""
 
-	# $1 = dns server (may be empty => system default resolver)
+	# Primary resolver: host (from bind-host). $1 = dns (may be empty).
+	_host_a()    { host -t A    "$domain" $1 2>/dev/null | awk '/has address/ {print $NF; exit}'; }
+	_host_aaaa() { host -t AAAA "$domain" $1 2>/dev/null | awk '/has IPv6 address/ {print $NF; exit}'; }
+
+	# Alternate resolver: drill (from ldns-utils). $1 = dns (may be empty).
+	_drill_a() {
+		local s=""; [ -n "$1" ] && s="@$1"
+		drill "$domain" $s A 2>/dev/null | awk '!/^;/ && $4=="A" {print $5; exit}'
+	}
+	_drill_aaaa() {
+		local s=""; [ -n "$1" ] && s="@$1"
+		drill "$domain" $s AAAA 2>/dev/null | awk '!/^;/ && $4=="AAAA" {print $5; exit}'
+	}
+
 	_resolve_a() {
-		host -t A "$domain" $1 2>/dev/null | \
-			awk '/has address/ {print $NF; exit}'
+		if command -v host >/dev/null 2>&1; then _host_a "$1"; else _drill_a "$1"; fi
 	}
 	_resolve_aaaa() {
-		host -t AAAA "$domain" $1 2>/dev/null | \
-			awk '/has IPv6 address/ {print $NF; exit}'
+		if command -v host >/dev/null 2>&1; then _host_aaaa "$1"; else _drill_aaaa "$1"; fi
 	}
 
 	_try() {
