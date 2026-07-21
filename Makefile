@@ -12,7 +12,7 @@ LUCI_DEPENDS:=+udp2raw +bind-host
 LUCI_PKGARCH:=all
 
 PKG_NAME:=luci-app-udp2raw-ultra
-PKG_VERSION:=1.1.0
+PKG_VERSION:=1.1.1
 PKG_RELEASE:=1
 
 PKG_LICENSE:=Apache-2.0

@@ -28,14 +28,12 @@ resolve_addr() {
 	local ip=""
 
 	_a() {
-		nslookup -type=A "$domain" ${dns:+$dns} 2>/dev/null | \
-			awk '/^Address[ 0-9]*: / {print $NF}' | \
-			grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' | head -n1
+		host -t A "$domain" $dns 2>/dev/null | \
+			awk '/has address/ {print $NF; exit}'
 	}
 	_aaaa() {
-		nslookup -type=AAAA "$domain" ${dns:+$dns} 2>/dev/null | \
-			awk '/^Address[ 0-9]*: / {print $NF}' | \
-			grep -E '^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$' | head -n1
+		host -t AAAA "$domain" $dns 2>/dev/null | \
+			awk '/has IPv6 address/ {print $NF; exit}'
 	}
 
 	case "$family" in
