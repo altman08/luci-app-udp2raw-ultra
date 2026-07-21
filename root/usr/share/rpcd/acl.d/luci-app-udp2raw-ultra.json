@@ -1,0 +1,17 @@
+{
+	"luci-app-udp2raw-ultra": {
+		"description": "Grant UCI access for luci-app-udp2raw-ultra",
+		"read": {
+			"uci": [ "udp2raw" ],
+			"ubus": {
+				"service": [ "list" ]
+			}
+		},
+		"write": {
+			"uci": [ "udp2raw" ],
+			"ubus": {
+				"service": [ "event" ]
+			}
+		}
+	}
+}

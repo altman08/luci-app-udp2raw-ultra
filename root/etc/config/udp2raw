@@ -1,0 +1,45 @@
+# udp2raw-ultra configuration
+# Global options
+config global 'global'
+	option dns_server '2606:4700:4700::1111'
+	option check_interval '60'
+	option log_max '100'
+
+# Example server rule (this router has a public IP / IPv6)
+#config rule
+#	option enabled '0'
+#	option name 'server'
+#	option mode 'server'
+#	option family 'auto'
+#	option listen_port '58881'
+#	option forward_addr '127.0.0.1'
+#	option forward_port '59991'
+#	option password '12345678'
+#	option raw_mode 'icmp'
+#	option cipher_mode 'xor'
+#	option seq_mode '0'
+#	option sock_buf '4096'
+#	option auto_rule '1'
+#	option retry_on_error '1'
+#	option fix_gro '0'
+#	option log_level '4'
+
+# Example client rule (connect to a peer by domain or IP)
+#config rule
+#	option enabled '0'
+#	option name 'peerA'
+#	option mode 'client'
+#	option family 'auto'
+#	option address 'abc.example.com'
+#	option port '58882'
+#	option listen_addr '127.0.0.1'
+#	option listen_port '59992'
+#	option password '12345678'
+#	option raw_mode 'icmp'
+#	option cipher_mode 'xor'
+#	option seq_mode '0'
+#	option sock_buf '4096'
+#	option auto_rule '1'
+#	option retry_on_error '1'
+#	option fix_gro '0'
+#	option log_level '4'

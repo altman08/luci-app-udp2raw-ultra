@@ -1,0 +1,14 @@
+{
+	"admin/services/udp2raw-ultra": {
+		"title": "UDP2RAW Ultra",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "udp2raw-ultra/udp2raw"
+		},
+		"depends": {
+			"acl": [ "luci-app-udp2raw-ultra" ],
+			"uci": { "udp2raw": true }
+		}
+	}
+}
