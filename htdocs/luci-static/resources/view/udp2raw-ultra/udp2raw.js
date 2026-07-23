@@ -5,6 +5,8 @@
 'require rpc';
 'require poll';
 'require network';
+'require fs';
+'require ui';
 
 var callServiceList = rpc.declare({
 	object: 'service',
@@ -20,6 +22,18 @@ function getStatus() {
 			instances = res['udp2raw']['instances'] || {};
 		} catch (e) { }
 		return instances;
+	});
+}
+
+// Call a single-rule control command on the init script.
+// action: 'rule_start' | 'rule_stop' | 'rule_restart'
+function ruleAction(action, name) {
+	return fs.exec('/etc/init.d/udp2raw', [ action, name ]).then(function (res) {
+		if (res && res.code !== 0)
+			ui.addNotification(null, E('p', {}, '操作失败：%s'.format((res.stderr || res.stdout || '未知错误'))), 'error');
+		return res;
+	}).catch(function (e) {
+		ui.addNotification(null, E('p', {}, '操作失败：%s'.format(e.message || e)), 'error');
 	});
 }
 
@@ -135,6 +149,44 @@ return view.extend({
 				});
 			});
 			return E('span', { 'id': id }, '...');
+		};
+
+		// --- 操作按钮（根据运行状态动态显示）---
+		// 运行中：重启 + 停止；已停止：启动
+		o = s.option(form.DummyValue, '_actions', '操作');
+		o.modalonly = false;
+		o.textvalue = function (section_id) {
+			var name = uci.get('udp2raw', section_id, 'name') || section_id;
+			var id = 'act_' + section_id;
+			var mkBtn = function (label, cls, action, disabled) {
+				var attrs = {
+					'class': 'cbi-button cbi-button-' + cls,
+					'style': 'margin:0 2px'
+				};
+				if (disabled)
+					attrs.disabled = 'disabled';
+				else
+					attrs.click = ui.createHandlerFn(this, function () {
+						return ruleAction(action, name).then(function () {
+							// give procd a moment, then refresh status poll
+							return new Promise(function (r) { setTimeout(r, 800); });
+						});
+					});
+				return E('button', attrs, label);
+			};
+			poll.add(function () {
+				return getStatus().then(function (inst) {
+					var el = document.getElementById(id);
+					if (!el) return;
+					var running = inst[name] && inst[name].running;
+					var btns = running
+						? [ mkBtn('重启', 'action', 'rule_restart', false), mkBtn('停止', 'negative', 'rule_stop', false) ]
+						: [ mkBtn('启动', 'positive', 'rule_start', false), mkBtn('停止', 'neutral', 'rule_stop', true) ];
+					el.innerHTML = '';
+					btns.forEach(function (b) { el.appendChild(b); });
+				});
+			});
+			return E('div', { 'id': id, 'style': 'display:flex;white-space:nowrap' }, '...');
 		};
 
 		// ================= 详细（弹窗）选项 =================

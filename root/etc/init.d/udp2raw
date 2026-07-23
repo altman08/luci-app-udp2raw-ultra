@@ -207,6 +207,48 @@ stop_service() {
 	fi
 }
 
+# Force a full restart on config change. The default procd reload only diffs
+# per-instance command lines, so it misses global changes (dns_server,
+# bypass_proxy, wan_iface) and does not rebuild the bypass rules or re-resolve
+# domains. A clean stop+start guarantees every change actually takes effect.
+reload_service() {
+	stop
+	start
+}
+
 service_triggers() {
 	procd_add_reload_trigger "udp2raw"
+}
+
+# ---- Per-rule control (called from the LuCI UI) ----
+# procd reconciles the full instance set on every start_service, so:
+#   rule_start   : re-run start; procd adds the missing instance, leaves
+#                  already-running instances untouched.
+#   rule_stop    : precisely delete just that one procd instance.
+#   rule_restart : delete the instance, then re-run start to add it back.
+# The instance key equals the rule's "name" field.
+EXTRA_COMMANDS="rule_start rule_stop rule_restart"
+EXTRA_HELP="	rule_start <name>    Start a single rule instance
+	rule_stop <name>     Stop a single rule instance
+	rule_restart <name>  Restart a single rule instance"
+
+rule_stop() {
+	local name="$1"
+	[ -n "$name" ] || { echo "usage: rule_stop <name>" >&2; return 1; }
+	ubus call service delete "{\"name\":\"udp2raw\",\"instance\":\"$name\"}" 2>/dev/null
+}
+
+rule_start() {
+	local name="$1"
+	[ -n "$name" ] || { echo "usage: rule_start <name>" >&2; return 1; }
+	# Reconcile: procd starts only the missing instance, keeps others running.
+	start
+}
+
+rule_restart() {
+	local name="$1"
+	[ -n "$name" ] || { echo "usage: rule_restart <name>" >&2; return 1; }
+	rule_stop "$name"
+	sleep 1
+	start
 }

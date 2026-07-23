@@ -11,6 +11,11 @@
 			"uci": [ "udp2raw" ],
 			"ubus": {
 				"service": [ "event" ]
+			},
+			"file": {
+				"/etc/init.d/udp2raw rule_start *": [ "exec" ],
+				"/etc/init.d/udp2raw rule_stop *": [ "exec" ],
+				"/etc/init.d/udp2raw rule_restart *": [ "exec" ]
 			}
 		}
 	}
