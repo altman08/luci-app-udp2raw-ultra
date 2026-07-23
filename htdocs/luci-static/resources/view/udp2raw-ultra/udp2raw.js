@@ -15,6 +15,15 @@ var callServiceList = rpc.declare({
 	expect: { '': {} }
 });
 
+// ---- Shared status state, driven by a single poll ----
+// statusCache: name -> instance info (from procd)
+// transient:   name -> '启动中'|'停止中'|'重启中' (temporary UI state after a click)
+// rowUpdaters: per-row render callbacks, all refreshed together on each poll
+var statusCache = {};
+var transient = {};
+var rowUpdaters = [];
+var pollStarted = false;
+
 function getStatus() {
 	return L.resolveDefault(callServiceList('udp2raw'), {}).then(function (res) {
 		var instances = {};
@@ -23,6 +32,26 @@ function getStatus() {
 		} catch (e) { }
 		return instances;
 	});
+}
+
+// Fetch status once and refresh every row's status text + buttons together.
+function refreshStatus() {
+	return getStatus().then(function (inst) {
+		statusCache = inst || {};
+		rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
+		return statusCache;
+	});
+}
+
+// Register the single shared poll (runs once regardless of row count).
+function ensurePoll() {
+	if (pollStarted) return;
+	pollStarted = true;
+	poll.add(refreshStatus, 3);
+}
+
+function isRunning(name) {
+	return !!(statusCache[name] && statusCache[name].running);
 }
 
 // Call a single-rule control command on the init script.
@@ -34,6 +63,29 @@ function ruleAction(action, name) {
 		return res;
 	}).catch(function (e) {
 		ui.addNotification(null, E('p', {}, '操作失败：%s'.format(e.message || e)), 'error');
+	});
+}
+
+// Run an action with immediate visual feedback: set a transient state, refresh
+// the UI at once, run the command, then re-poll real status a couple of times.
+function runRuleAction(action, name) {
+	transient[name] = (action === 'rule_stop') ? '停止中'
+		: (action === 'rule_restart') ? '重启中' : '启动中';
+	rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
+
+	return ruleAction(action, name).then(function () {
+		// procd needs a moment; poll real status, then clear the transient.
+		return new Promise(function (resolve) {
+			setTimeout(function () {
+				refreshStatus().then(function () {
+					delete transient[name];
+					rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
+					// one more late refresh in case respawn is slow
+					setTimeout(refreshStatus, 1500);
+					resolve();
+				});
+			}, 700);
+		});
 	});
 }
 
@@ -50,6 +102,9 @@ return view.extend({
 		var m, s, o;
 		var networks = (data && data[1]) || [];
 		var wanNets = (data && data[2]) || [];
+
+		// Reset per-render shared state so updaters don't accumulate on re-render.
+		rowUpdaters = [];
 
 		// Detect the current physical WAN logical interface.
 		var curWanIface = 'wan';
@@ -137,27 +192,9 @@ return view.extend({
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			var name = uci.get('udp2raw', section_id, 'name') || section_id;
-			var id = 'st_' + section_id;
-			poll.add(function () {
-				return getStatus().then(function (inst) {
-					var el = document.getElementById(id);
-					if (!el) return;
-					var running = inst[name] && inst[name].running;
-					el.innerHTML = running
-						? '<span style="color:green"><strong>运行中</strong></span>'
-						: '<span style="color:#999">已停止</span>';
-				});
-			});
-			return E('span', { 'id': id }, '...');
-		};
+			var stId = 'st_' + section_id;
+			var actId = 'act_' + section_id;
 
-		// --- 操作按钮（根据运行状态动态显示）---
-		// 运行中：重启 + 停止；已停止：启动
-		o = s.option(form.DummyValue, '_actions', '操作');
-		o.modalonly = false;
-		o.textvalue = function (section_id) {
-			var name = uci.get('udp2raw', section_id, 'name') || section_id;
-			var id = 'act_' + section_id;
 			var mkBtn = function (label, cls, action, disabled) {
 				var attrs = {
 					'class': 'cbi-button cbi-button-' + cls,
@@ -167,36 +204,59 @@ return view.extend({
 					attrs.disabled = 'disabled';
 				else
 					attrs.click = ui.createHandlerFn(this, function () {
-						return ruleAction(action, name).then(function () {
-							// give procd a moment, then refresh status poll
-							return new Promise(function (r) { setTimeout(r, 800); });
-						});
+						return runRuleAction(action, name);
 					});
 				return E('button', attrs, label);
 			};
-			poll.add(function () {
-				return getStatus().then(function (inst) {
-					var el = document.getElementById(id);
-					if (!el) return;
-					var running = inst[name] && inst[name].running;
+
+			// Render status text + buttons from current cache/transient state.
+			var updater = function () {
+				var stEl = document.getElementById(stId);
+				var actEl = document.getElementById(actId);
+				if (!stEl && !actEl) return;
+				var t = transient[name];
+				var running = isRunning(name);
+
+				if (stEl) {
+					if (t)
+						stEl.innerHTML = '<span style="color:#f90"><strong>' + t + '</strong></span>';
+					else
+						stEl.innerHTML = running
+							? '<span style="color:green"><strong>运行中</strong></span>'
+							: '<span style="color:#999">已停止</span>';
+				}
+				if (actEl) {
+					var busy = !!t;
 					var btns = running
-						? [ mkBtn('重启', 'action', 'rule_restart', false), mkBtn('停止', 'negative', 'rule_stop', false) ]
-						: [ mkBtn('启动', 'positive', 'rule_start', false), mkBtn('停止', 'neutral', 'rule_stop', true) ];
-					el.innerHTML = '';
-					btns.forEach(function (b) { el.appendChild(b); });
-				});
-			});
-			return E('div', { 'id': id, 'style': 'display:flex;white-space:nowrap' }, '...');
+						? [ mkBtn('重启', 'action', 'rule_restart', busy), mkBtn('停止', 'negative', 'rule_stop', busy) ]
+						: [ mkBtn('启动', 'positive', 'rule_start', busy), mkBtn('停止', 'neutral', 'rule_stop', true) ];
+					actEl.innerHTML = '';
+					btns.forEach(function (b) { actEl.appendChild(b); });
+				}
+			};
+			rowUpdaters.push(updater);
+			ensurePoll();
+			// Render immediately from whatever we already know, then poll refines it.
+			requestAnimationFrame(updater);
+
+			return E('span', { 'id': stId }, '...');
+		};
+
+		// --- 操作按钮列（内容由上面的 updater 统一填充）---
+		o = s.option(form.DummyValue, '_actions', '操作');
+		o.modalonly = false;
+		o.textvalue = function (section_id) {
+			return E('div', { 'id': 'act_' + section_id, 'style': 'display:flex;justify-content:center;white-space:nowrap' }, '...');
 		};
 
 		// ================= 详细（弹窗）选项 =================
 
 		o = s.option(form.ListValue, 'family', '地址族',
-			'自动模式优先 IPv4（A 记录），其次 IPv6（AAAA）。每条隧道只使用一种地址族。');
-		o.value('auto', '自动（优先 IPv4）');
+			'客户端：解析对端域名时选择记录类型（IPv4=A 记录，IPv6=AAAA 记录）。' +
+			'服务端：决定监听协议。默认 IPv4，需要 IPv6 时手动切换。');
 		o.value('ipv4', '仅 IPv4');
 		o.value('ipv6', '仅 IPv6');
-		o.default = 'auto';
+		o.default = 'ipv4';
 		o.modalonly = true;
 
 		// --- 客户端专用：对端地址/端口 ---

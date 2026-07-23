@@ -57,9 +57,8 @@ resolve_addr() {
 	_try() {
 		local d="$1"
 		case "$family" in
-			ipv4) _resolve_a "$d" ;;
 			ipv6) _resolve_aaaa "$d" ;;
-			*)    local r=$(_resolve_a "$d"); [ -z "$r" ] && r=$(_resolve_aaaa "$d"); echo "$r" ;;
+			*)    _resolve_a "$d" ;;
 		esac
 	}
 
@@ -91,7 +90,7 @@ collect_rule() {
 		return 0
 	fi
 
-	config_get family "$cfg" family "auto"
+	config_get family "$cfg" family "ipv4"
 	config_get name "$cfg" name "$cfg"
 
 	MONITORED="$MONITORED $cfg|$address|$family|$name"

@@ -31,7 +31,7 @@ is_ip_literal() {
 }
 
 # Resolve a domain to an address according to family.
-# family: auto (A first, then AAAA), ipv4 (A only), ipv6 (AAAA only)
+# family: ipv4 (A only, default), ipv6 (AAAA only)
 # Tries the configured DNS first; if that yields nothing (e.g. the DNS is an
 # IPv6 address but the WAN has no IPv6, or it is unreachable), it falls back
 # to the system default resolver.
@@ -66,9 +66,8 @@ resolve_addr() {
 	_try() {
 		local d="$1"
 		case "$family" in
-			ipv4) _resolve_a "$d" ;;
 			ipv6) _resolve_aaaa "$d" ;;
-			*)    local r=$(_resolve_a "$d"); [ -z "$r" ] && r=$(_resolve_aaaa "$d"); echo "$r" ;;
+			*)    _resolve_a "$d" ;;
 		esac
 	}
 
@@ -100,7 +99,7 @@ start_rule() {
 
 	config_get name "$cfg" name "$cfg"
 	config_get mode "$cfg" mode "client"
-	config_get family "$cfg" family "auto"
+	config_get family "$cfg" family "ipv4"
 	config_get address "$cfg" address ""
 	config_get port "$cfg" port ""
 	config_get listen_addr "$cfg" listen_addr ""
