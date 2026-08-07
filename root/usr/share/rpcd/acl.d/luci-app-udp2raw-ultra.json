@@ -1,10 +1,15 @@
 {
 	"luci-app-udp2raw-ultra": {
-		"description": "Grant UCI access for luci-app-udp2raw-ultra",
+		"description": "Grant access for luci-app-udp2raw-ultra",
 		"read": {
 			"uci": [ "udp2raw" ],
 			"ubus": {
 				"service": [ "list" ]
+			},
+			"file": {
+				"/etc/init.d/udp2raw rule_resolved *": [ "exec" ],
+				"/etc/init.d/udp2raw rule_conn *":     [ "exec" ],
+				"/etc/init.d/udp2raw rule_log *":      [ "exec" ]
 			}
 		},
 		"write": {
@@ -13,8 +18,8 @@
 				"service": [ "event" ]
 			},
 			"file": {
-				"/etc/init.d/udp2raw rule_start *": [ "exec" ],
-				"/etc/init.d/udp2raw rule_stop *": [ "exec" ],
+				"/etc/init.d/udp2raw rule_start *":   [ "exec" ],
+				"/etc/init.d/udp2raw rule_stop *":    [ "exec" ],
 				"/etc/init.d/udp2raw rule_restart *": [ "exec" ]
 			}
 		}

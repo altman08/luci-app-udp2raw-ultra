@@ -16,29 +16,82 @@ var callServiceList = rpc.declare({
 });
 
 // ---- Shared status state, driven by a single poll ----
-// statusCache: name -> instance info (from procd)
-// transient:   name -> '启动中'|'停止中'|'重启中' (temporary UI state after a click)
-// rowUpdaters: per-row render callbacks, all refreshed together on each poll
 var statusCache = {};
 var transient = {};
 var rowUpdaters = [];
+var resolvedCache = {};  // rule name -> resolved peer IP
+var connCache = {};      // rule name -> established|handshaking|none
 var pollStarted = false;
+
+var INIT = '/etc/init.d/udp2raw';
 
 function getStatus() {
 	return L.resolveDefault(callServiceList('udp2raw'), {}).then(function (res) {
 		var instances = {};
-		try {
-			instances = res['udp2raw']['instances'] || {};
-		} catch (e) { }
+		try { instances = res['udp2raw']['instances'] || {}; } catch (e) { }
 		return instances;
 	});
 }
 
-// Fetch status once and refresh every row's status text + buttons together.
+function getRuleResolved(name) {
+	return fs.exec(INIT, [ 'rule_resolved', name ]).then(function (res) {
+		return ((res && res.stdout) ? res.stdout : '').trim();
+	}).catch(function () { return ''; });
+}
+
+function getRuleConn(name) {
+	return fs.exec(INIT, [ 'rule_conn', name ]).then(function (res) {
+		return ((res && res.stdout) ? res.stdout : '').trim() || 'none';
+	}).catch(function () { return 'none'; });
+}
+
+function getRuleLog(name) {
+	return fs.exec(INIT, [ 'rule_log', name ]).then(function (res) {
+		return ((res && res.stdout) ? res.stdout : '');
+	}).catch(function () { return ''; });
+}
+
+function showRuleLogModal(name) {
+	var logId = 'u2r_rule_log_' + name;
+	var pre = E('pre', {
+		'id': logId,
+		'style': 'max-height:400px;overflow:auto;background:#1e1e1e;color:#d4d4d4;' +
+			'padding:12px;border-radius:6px;font-size:12px;line-height:1.5;white-space:pre-wrap;margin:0'
+	}, '加载中…');
+	ui.showModal('规则日志：' + name, [
+		E('p', { 'style': 'color:#666;font-size:12px;margin-top:0' },
+			'最近 100 条有意义的日志事件（已过滤高频噪音）。'),
+		pre,
+		E('div', { 'class': 'right', 'style': 'margin-top:12px' }, [
+			E('button', { 'class': 'cbi-button cbi-button-neutral', 'click': ui.hideModal }, '关闭')
+		])
+	]);
+	getRuleLog(name).then(function (text) {
+		var el = document.getElementById(logId);
+		if (el) el.textContent = text || '（暂无相关日志）';
+	});
+}
+
+// allRuleNames tracks names seen during render so the second-wave poll
+// knows which rules to query diagnostics for.
+var allRuleNames = [];
+
 function refreshStatus() {
 	return getStatus().then(function (inst) {
 		statusCache = inst || {};
 		rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
+
+		// Second wave: resolved IPs only, for running rules.
+		var running = allRuleNames.filter(function (n) { return isRunning(n); });
+		if (running.length) {
+			Promise.all(running.map(function (name) {
+				return getRuleResolved(name).then(function (ip) {
+					resolvedCache[name] = ip;
+				});
+			})).then(function () {
+				rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
+			});
+		}
 		return statusCache;
 	});
 }
@@ -55,9 +108,8 @@ function isRunning(name) {
 }
 
 // Call a single-rule control command on the init script.
-// action: 'rule_start' | 'rule_stop' | 'rule_restart'
 function ruleAction(action, name) {
-	return fs.exec('/etc/init.d/udp2raw', [ action, name ]).then(function (res) {
+	return fs.exec(INIT, [ action, name ]).then(function (res) {
 		if (res && res.code !== 0)
 			ui.addNotification(null, E('p', {}, '操作失败：%s'.format((res.stderr || res.stdout || '未知错误'))), 'error');
 		return res;
@@ -66,21 +118,64 @@ function ruleAction(action, name) {
 	});
 }
 
-// Run an action with immediate visual feedback: set a transient state, refresh
-// the UI at once, run the command, then re-poll real status a couple of times.
-function runRuleAction(action, name) {
+// Set enabled flag in UCI and save, then run an action.
+// enabledVal: '1' to enable, '0' to disable, null to skip UCI change.
+function ruleActionWithEnabled(action, name, section_id, enabledVal) {
+	var p = Promise.resolve();
+	if (enabledVal !== null) {
+		p = uci.set('udp2raw', section_id, 'enabled', enabledVal)
+			.then(function () { return uci.save(); })
+			.then(function () { return uci.apply(); })
+			.catch(function () {});
+	}
+	return p.then(function () { return ruleAction(action, name); });
+}
+
+// Run an action with visual feedback and UCI enabled-flag sync.
+function runRuleAction(action, name, section_id) {
+	var enabled = uci.get('udp2raw', section_id, 'enabled');
+	var isEnabled = (enabled === '1' || enabled === undefined);
+
 	transient[name] = (action === 'rule_stop') ? '停止中'
 		: (action === 'rule_restart') ? '重启中' : '启动中';
 	rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
 
-	return ruleAction(action, name).then(function () {
-		// procd needs a moment; poll real status, then clear the transient.
+	var p;
+	if (action === 'rule_stop') {
+		// Stop: run stop first, then disable in UCI
+		p = ruleAction('rule_stop', name).then(function () {
+			return uci.set('udp2raw', section_id, 'enabled', '0');
+		}).then(function () {
+			return uci.save();
+		}).then(function () {
+			return uci.apply();
+		}).catch(function () {});
+	} else if (action === 'rule_start') {
+		// Start: enable in UCI first, then start
+		p = uci.set('udp2raw', section_id, 'enabled', '1')
+			.then(function () { return uci.save(); })
+			.then(function () { return uci.apply(); })
+			.then(function () { return ruleAction('rule_start', name); })
+			.catch(function () {});
+	} else {
+		// Restart: if already enabled just restart; if disabled, enable first
+		if (isEnabled) {
+			p = ruleAction('rule_restart', name);
+		} else {
+			p = uci.set('udp2raw', section_id, 'enabled', '1')
+				.then(function () { return uci.save(); })
+				.then(function () { return uci.apply(); })
+				.then(function () { return ruleAction('rule_start', name); })
+				.catch(function () {});
+		}
+	}
+
+	return p.then(function () {
 		return new Promise(function (resolve) {
 			setTimeout(function () {
 				refreshStatus().then(function () {
 					delete transient[name];
 					rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
-					// one more late refresh in case respawn is slow
 					setTimeout(refreshStatus, 1500);
 					resolve();
 				});
@@ -150,6 +245,13 @@ return view.extend({
 		o.default = '';
 		o.depends('bypass_proxy', '1');
 
+		o = s.option(form.Flag, 'ttl_normalize', 'TTL 归一化（服务端）',
+			'将出口包的 TTL（IPv4）和 hoplimit（IPv6）强制设为 64，抹除隧道中转痕迹，' +
+			'使出口流量看起来像本地直发，避免被运营商 DPI 识别为代理/隧道流量。' +
+			'仅服务端出口需要，客户端开启无副作用。使用「外网接口」字段指定出口设备。');
+		o.default = '1';
+		o.rmempty = false;
+
 		// ---- 规则列表 ----
 		s = m.section(form.GridSection, 'rule', '隧道规则',
 			'每条规则是一个独立的 udp2raw 实例。服务端 = 有公网 IP/IPv6 的一方；客户端 = 处于 NAT 后的一方。');
@@ -176,6 +278,7 @@ return view.extend({
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			var mode = uci.get('udp2raw', section_id, 'mode') || 'client';
+			var name = uci.get('udp2raw', section_id, 'name') || section_id;
 			if (mode === 'server') {
 				var lp = uci.get('udp2raw', section_id, 'listen_port') || '?';
 				var fa = uci.get('udp2raw', section_id, 'forward_addr') || '127.0.0.1';
@@ -184,7 +287,27 @@ return view.extend({
 			} else {
 				var a = uci.get('udp2raw', section_id, 'address') || '?';
 				var p = uci.get('udp2raw', section_id, 'port') || '?';
-				return '%s:%s'.format(a, p);
+				var line1 = '%s:%s'.format(a, p);
+
+				// For domain-based client rules, show the currently-resolved IP
+				// underneath the address (from init.d's .resolved state file).
+				var isDomain = a && !/^[0-9.]+$/.test(a) && !/:/.test(a) && a !== '?';
+				if (!isDomain) return line1;
+
+				var resId = 'res_' + section_id;
+				var upd = function () {
+					var el = document.getElementById(resId);
+					if (!el) return;
+					var ip = resolvedCache[name];
+					el.textContent = ip ? ('当前解析：' + ip) : '当前解析：—';
+				};
+				rowUpdaters.push(upd);
+				ensurePoll();
+				requestAnimationFrame(upd);
+				return E('div', {}, [
+					E('div', {}, line1),
+					E('div', { 'id': resId, 'style': 'font-size:12px;color:#666;margin-top:2px' }, '当前解析：—')
+				]);
 			}
 		};
 
@@ -192,54 +315,77 @@ return view.extend({
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			var name = uci.get('udp2raw', section_id, 'name') || section_id;
-			var stId = 'st_' + section_id;
+			if (allRuleNames.indexOf(name) === -1) allRuleNames.push(name);
+			var stId  = 'st_'  + section_id;
+			var cnId  = 'cn_'  + section_id;
 			var actId = 'act_' + section_id;
 
 			var mkBtn = function (label, cls, action, disabled) {
-				var attrs = {
-					'class': 'cbi-button cbi-button-' + cls,
-					'style': 'margin:0 2px'
-				};
-				if (disabled)
+				var attrs = { 'class': 'cbi-button cbi-button-' + cls, 'style': 'margin:0 2px' };
+				if (disabled) {
 					attrs.disabled = 'disabled';
-				else
+				} else {
 					attrs.click = ui.createHandlerFn(this, function () {
-						return runRuleAction(action, name);
+						return runRuleAction(action, name, section_id);
 					});
+				}
 				return E('button', attrs, label);
 			};
 
-			// Render status text + buttons from current cache/transient state.
+			var connInfo = function (running) {
+				if (!running) return null;
+				// udp2raw uses raw sockets, conntrack has no TCP state for it.
+				// Only show a log link, not a connection state.
+				return { showLog: true };
+			};
+
 			var updater = function () {
-				var stEl = document.getElementById(stId);
+				var stEl  = document.getElementById(stId);
+				var cnEl  = document.getElementById(cnId);
 				var actEl = document.getElementById(actId);
-				if (!stEl && !actEl) return;
-				var t = transient[name];
+				if (!stEl && !cnEl && !actEl) return;
+				var t       = transient[name];
 				var running = isRunning(name);
 
 				if (stEl) {
 					if (t)
-						stEl.innerHTML = '<span style="color:#f90"><strong>' + t + '</strong></span>';
+						stEl.innerHTML = '<span style="color:#ef6c00"><strong>' + t + '</strong></span>';
 					else
 						stEl.innerHTML = running
-							? '<span style="color:green"><strong>运行中</strong></span>'
+							? '<span style="color:#2e7d32"><strong>运行中</strong></span>'
 							: '<span style="color:#999">已停止</span>';
 				}
+
+				if (cnEl) {
+					cnEl.innerHTML = '';
+					if (running && !t) {
+						cnEl.appendChild(E('a', {
+							'href': '#',
+							'style': 'font-size:12px;color:#337ab7',
+							'click': function (ev) { ev.preventDefault(); showRuleLogModal(name); }
+						}, '查看日志'));
+					}
+				}
+
 				if (actEl) {
 					var busy = !!t;
 					var btns = running
-						? [ mkBtn('重启', 'action', 'rule_restart', busy), mkBtn('停止', 'negative', 'rule_stop', busy) ]
-						: [ mkBtn('启动', 'positive', 'rule_start', busy), mkBtn('停止', 'neutral', 'rule_stop', true) ];
+						? [ mkBtn('重启', 'action',   'rule_restart', busy),
+						    mkBtn('停止', 'negative', 'rule_stop',    busy) ]
+						: [ mkBtn('启动', 'positive', 'rule_start',   busy),
+						    mkBtn('停止', 'neutral',  'rule_stop',    true) ];
 					actEl.innerHTML = '';
 					btns.forEach(function (b) { actEl.appendChild(b); });
 				}
 			};
 			rowUpdaters.push(updater);
 			ensurePoll();
-			// Render immediately from whatever we already know, then poll refines it.
 			requestAnimationFrame(updater);
 
-			return E('span', { 'id': stId }, '...');
+			return E('div', {}, [
+				E('div', { 'id': stId }, '…'),
+				E('div', { 'id': cnId, 'style': 'margin-top:2px' })
+			]);
 		};
 
 		// --- 操作按钮列（内容由上面的 updater 统一填充）---
@@ -252,11 +398,11 @@ return view.extend({
 		// ================= 详细（弹窗）选项 =================
 
 		o = s.option(form.ListValue, 'family', '地址族',
-			'客户端：解析对端域名时选择记录类型（IPv4=A 记录，IPv6=AAAA 记录）。' +
-			'服务端：决定监听协议。默认 IPv4，需要 IPv6 时手动切换。');
+			'仅客户端。解析对端域名时选择记录类型（IPv4=A 记录，IPv6=AAAA 记录）。对端为 IP 时忽略。');
 		o.value('ipv4', '仅 IPv4');
 		o.value('ipv6', '仅 IPv6');
 		o.default = 'ipv4';
+		o.depends('mode', 'client');
 		o.modalonly = true;
 
 		// --- 客户端专用：对端地址/端口 ---
@@ -371,9 +517,23 @@ return view.extend({
 		o.default = '1024';
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'auto_rule', '自动防火墙规则',
-			'添加 iptables 规则（-a）丢弃 RST 包。faketcp 模式推荐开启。');
+		o = s.option(form.Flag, 'auto_fw', '自动防火墙（服务端）',
+			'仅服务端。勾选后自动向系统防火墙写入放行规则（IPv4 + IPv6），无需手动配置。' +
+			'规则会出现在系统「防火墙」页面，取消勾选并保存会自动清除。' +
+			'使用 fw4 UCI 方式，兼容 iptables-nft 和 iptables-legacy 环境。');
 		o.default = '1';
+		o.rmempty = false;
+		o.depends('mode', 'server');
+		o.modalonly = true;
+
+		o = s.option(form.Flag, 'route_via_wan', '服务端例外路由',
+			'仅客户端。当本机默认路由整体指向隧道（如 WireGuard 全局代理）时，' +
+			'去 udp2raw 服务端的流量会进入隧道，形成死锁。' +
+			'勾选后自动为服务端 IP 写入走物理 WAN 的 /32(/128) 静态路由，绕过隧道。' +
+			'规则可在「网络 → 静态路由」页面看到（udp2raw_ 前缀）。' +
+			'仅全局代理场景需要；普通场景请保持关闭。');
+		o.default = '0';
+		o.depends('mode', 'client');
 		o.modalonly = true;
 
 		o = s.option(form.Flag, 'retry_on_error', '出错重试',

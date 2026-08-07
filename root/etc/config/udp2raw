@@ -6,6 +6,7 @@ config global 'global'
 	option log_max '100'
 	option bypass_proxy '1'
 	option wan_iface ''
+	option ttl_normalize '1'
 
 # Example server rule (this router has a public IP / IPv6)
 #config rule

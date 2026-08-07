@@ -24,7 +24,7 @@ EXTRA_DEPENDS:=bind-host | drill
 
 PKG_NAME:=luci-app-udp2raw-ultra
 PKG_VERSION:=1.3.3
-PKG_RELEASE:=1
+PKG_RELEASE:=13
 
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Kwrt
