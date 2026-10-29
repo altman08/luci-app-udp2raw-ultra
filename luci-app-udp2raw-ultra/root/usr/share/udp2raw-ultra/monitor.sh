@@ -22,21 +22,10 @@ MONITORED=""
 
 collect_rule() {
 	local cfg="$1"
-	local enabled mode address family name
-
-	config_get_bool enabled "$cfg" enabled 0
-	[ "$enabled" = "1" ] || return 0
-
-	config_get mode "$cfg" mode "client"
-	[ "$mode" = "client" ] || return 0
+	local address family name
+	u2r_rule_needs_monitor "$cfg" || return 0
 
 	config_get address "$cfg" address ""
-	[ -n "$address" ] || return 0
-
-	# Skip literal IPs, only domains need monitoring
-	if is_ip_literal "$address"; then
-		return 0
-	fi
 
 	config_get family "$cfg" family "ipv4"
 	config_get name "$cfg" name "$cfg"
@@ -51,10 +40,9 @@ config_get_bool BYPASS_PROXY global bypass_proxy 1
 config_get UDP2RAW_WAN_IFACE global wan_iface ""
 config_foreach collect_rule rule
 
-# Nothing to monitor -> idle sleep loop (procd keeps us alive cheaply)
-if [ -z "$MONITORED" ]; then
-	while true; do sleep 3600; done
-fi
+# Handle configuration changes between service startup and monitor execution.
+# Normally the init script does not register this instance without hostnames.
+[ -n "$MONITORED" ] || exit 0
 
 # Seed initial IPs
 for entry in $MONITORED; do

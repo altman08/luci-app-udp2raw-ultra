@@ -54,6 +54,7 @@ jobs:
       - name: Validate frontend, DNS resolver and release packaging
         run: |
           sh tests/test-resolve.sh
+          python3 tests/test-monitor.py
           node --check luci-app-udp2raw-ultra/htdocs/luci-static/resources/view/udp2raw-ultra/udp2raw.js
           python3 tests/test-release.py
 

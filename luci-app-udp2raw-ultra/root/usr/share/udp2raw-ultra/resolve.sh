@@ -13,6 +13,18 @@ is_ip_literal() {
 	return 1
 }
 
+# UCI must already be loaded. Only enabled clients with hostnames need DDNS.
+u2r_rule_needs_monitor() {
+	local cfg="$1" enabled mode address
+	config_get_bool enabled "$cfg" enabled 0
+	[ "$enabled" = "1" ] || return 1
+	config_get mode "$cfg" mode "client"
+	[ "$mode" = "client" ] || return 1
+	config_get address "$cfg" address ""
+	[ -n "$address" ] || return 1
+	! is_ip_literal "$address"
+}
+
 _u2r_resolve_query() {
 	local domain="$1" family="$2" dns="$3"
 	# Avoid optional nslookup flags so BusyBox's small and full applets work.

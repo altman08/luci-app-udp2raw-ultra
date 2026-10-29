@@ -35,7 +35,7 @@
 APK 固件（独立脚本生成的包未签名）：
 
 ```sh
-apk add --allow-untrusted ./luci-app-udp2raw-ultra-1.3.3-r16.apk
+apk add --allow-untrusted ./luci-app-udp2raw-ultra-1.3.3-r17.apk
 # 使用中文界面时，同时安装 Release 中的 luci-i18n-udp2raw-ultra-zh-cn APK
 ```
 
@@ -55,6 +55,8 @@ rm -f /tmp/luci-modulecache/* /tmp/luci-indexcache*
 ```
 
 然后进入 **网络 → UDP 流量伪装**（安装简体中文语言包后）。
+
+DDNS monitor 仅在至少启用一条对端地址为域名的客户端规则时运行。没有启用规则、仅有服务端或客户端使用固定 IP 时，不启动 monitor，也不创建 DNS 绕行规则；全部停用并保存应用后，monitor 会随服务重载停止。
 
 ## 使用教程
 
@@ -165,7 +167,7 @@ src-link udp2raw_ultra /path/to/luci-app-udp2raw-ultra
 
 ## GitHub Actions 打包发布
 
-提交并推送到本 fork 后，在 **Actions → Release OpenWrt packages → Run workflow** 中填写发布标签（例如 `v1.3.3-r16`），选择是否标记为预发布，然后启动流水线。
+提交并推送到本 fork 后，在 **Actions → Release OpenWrt packages → Run workflow** 中填写发布标签（例如 `v1.3.3-r17`），选择是否标记为预发布，然后启动流水线。
 
 流水线参考 `luci-proto-n2n` 的 SDK 构建及发布流程、`luci-app-udpspeeder` 的通用前端与语言包收集方式。使用 OpenWrt 官方 SDK Action，仅选择 `x86_64` 作为构建环境：
 
@@ -184,7 +186,7 @@ src-link udp2raw_ultra /path/to/luci-app-udp2raw-ultra
 
 ```sh
 APK_TOOL=/root/.local/bin/apk.static ./build-apk.sh
-# 产物：dist/luci-app-udp2raw-ultra-1.3.3-r16.apk
+# 产物：dist/luci-app-udp2raw-ultra-1.3.3-r17.apk
 ```
 
 默认使用 PATH 中的 `apk`，也可以用 `APK_TOOL` 指定工具路径、`DIST_DIR` 指定输出目录。脚本会写入 OpenWrt 的服务安装/卸载钩子及配置文件清单，并校验生成的 APK。此方式生成未签名的插件包，不包含 `udp2raw` 等依赖的二进制文件。
