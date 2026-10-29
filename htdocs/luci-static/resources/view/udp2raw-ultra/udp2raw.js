@@ -207,7 +207,7 @@ return view.extend({
 			curWanIface = wanNets[0].getName();
 		var autoLabel = '自动（当前 %s）'.format(curWanIface);
 
-		m = new form.Map('udp2raw', 'UDP2RAW Ultra',
+		m = new form.Map('udp2raw', 'UDP2RAW',
 			'将 UDP 流量伪装成 FakeTCP/UDP/ICMP，绕过 UDP QoS 限速或封锁。可添加多条规则，每条独立作为服务端或客户端。配合 WireGuard/AmneziaWG 使用效果最佳。');
 
 		// ---- 全局设置 ----

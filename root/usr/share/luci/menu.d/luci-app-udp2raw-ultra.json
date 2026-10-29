@@ -1,6 +1,6 @@
 {
-	"admin/services/udp2raw-ultra": {
-		"title": "UDP2RAW Ultra",
+	"admin/network/udp2raw-ultra": {
+		"title": "UDP2RAW",
 		"order": 60,
 		"action": {
 			"type": "view",

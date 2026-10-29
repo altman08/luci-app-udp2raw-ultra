@@ -1,12 +1,14 @@
 #!/bin/bash
 set -e
 
+cd -- "$(dirname -- "$0")"
+
 PKG_NAME="luci-app-udp2raw-ultra"
 PKG_VERSION="$(sed -n 's/^PKG_VERSION:=//p' Makefile | head -n1 | tr -d '\r[:space:]')"
 PKG_RELEASE="$(sed -n 's/^PKG_RELEASE:=//p' Makefile | head -n1 | tr -d '\r[:space:]')"
 MAINTAINER="Kwrt"
 DESCRIPTION="LuCI support for udp2raw (Ultra, multi-rule with server firewall and route_via_wan)"
-HOMEPAGE="https://github.com/Dage1819/luci-app-udp2raw-ultra"
+HOMEPAGE="https://github.com/altman08/luci-app-udp2raw-ultra"
 LICENSE="Apache-2.0"
 DIST_DIR="${DIST_DIR:-dist}"
 WORK_DIR="$(mktemp -d)"
@@ -21,8 +23,8 @@ IPK_FILE="${PKG_NAME}_${PKG_VERSION}-${PKG_RELEASE}_all.ipk"
 
 DATA_DIR="$WORK_DIR/data"
 mkdir -p "$DATA_DIR"
-rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
+DIST_DIR="$(cd -- "$DIST_DIR" && pwd)"
 
 cp -a root/. "$DATA_DIR/"
 if [ -d htdocs ]; then
@@ -44,7 +46,7 @@ Maintainer: $MAINTAINER
 Section: luci
 Priority: optional
 Installed-Size: $INSTALLED_SIZE
-Depends: udp2raw, bind-host | drill
+Depends: luci-base, udp2raw, drill, firewall4, ip-full
 Description: $DESCRIPTION
 Homepage: $HOMEPAGE
 License: $LICENSE
@@ -77,7 +79,7 @@ chmod 755 "$ipk_dir/control/postrm"
 printf '2.0\n' > "$ipk_dir/debian-binary"
 (cd "$DATA_DIR" && "$TAR" --format=gnu --numeric-owner --owner=0 --group=0 -cf - . | gzip -n > "$ipk_dir/data.tar.gz")
 (cd "$ipk_dir/control" && "$TAR" --format=gnu --numeric-owner --owner=0 --group=0 -cf - . | gzip -n > "$ipk_dir/control.tar.gz")
-(cd "$ipk_dir" && "$TAR" --format=gnu --numeric-owner --owner=0 --group=0 -cf - ./debian-binary ./data.tar.gz ./control.tar.gz | gzip -n > "$OLDPWD/$DIST_DIR/$IPK_FILE")
+(cd "$ipk_dir" && "$TAR" --format=gnu --numeric-owner --owner=0 --group=0 -cf - ./debian-binary ./data.tar.gz ./control.tar.gz | gzip -n > "$DIST_DIR/$IPK_FILE")
 
 echo "==> Built: $DIST_DIR/$IPK_FILE"
 ls -lh "$DIST_DIR/$IPK_FILE"

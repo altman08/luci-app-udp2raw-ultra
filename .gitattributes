@@ -18,3 +18,4 @@ root/etc/config/*   text eol=lf
 *.gif   binary
 *.webp  binary
 *.ipk   binary
+*.apk   binary

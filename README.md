@@ -22,16 +22,29 @@
 
 ## 依赖
 
-- `udp2raw` 二进制（Kwrt 固件已自带，或从软件源安装）
-- `bind-host`（提供 `host` 命令用于域名解析，安装时会自动拉取）
+- `luci-base`：LuCI 网页运行环境
+- `udp2raw`：隧道程序
+- `drill`：域名解析工具；运行时也支持已安装的 `bind-host`
+- `firewall4`：fw4/nftables 防火墙
+- `ip-full`：IPv4/IPv6 策略路由
+
+安装时会自动拉取依赖。使用明确的 `drill` 依赖，兼容 APK 和 IPK，避免 APK 无法解析 `bind-host | drill`。
 
 ## 安装
 
+APK 固件（独立脚本生成的包未签名）：
+
 ```sh
-opkg install luci-app-udp2raw-ultra_*.ipk
-# 若提示缺少 udp2raw 依赖但系统其实已自带：
-opkg install --force-depends luci-app-udp2raw-ultra_*.ipk
+apk add --allow-untrusted ./luci-app-udp2raw-ultra-1.3.3-r14.apk
 ```
+
+IPK 固件：
+
+```sh
+opkg install ./luci-app-udp2raw-ultra_*.ipk
+```
+
+请使用与当前固件匹配的软件源安装依赖。插件会安装 `/etc/init.d/udp2raw` 和 `/etc/config/udp2raw`，安装前请先卸载其他管理相同服务的 LuCI 插件，并备份已有配置。
 
 安装后清一下 LuCI 缓存并刷新浏览器：
 
@@ -39,7 +52,7 @@ opkg install --force-depends luci-app-udp2raw-ultra_*.ipk
 rm -f /tmp/luci-modulecache/* /tmp/luci-indexcache*
 ```
 
-然后进入 **服务 → UDP2RAW Ultra**。
+然后进入 **网络 → UDP2RAW**。
 
 ## 使用教程
 
@@ -51,7 +64,7 @@ udp2raw 的工作原理：**有公网 IP 的一方跑服务端，NAT 后面的�
 
 #### 服务端配置（B 端，有公网的路由器）
 
-进入 **服务 → UDP2RAW Ultra**，点**添加规则**：
+进入 **网络 → UDP2RAW**，点**添加规则**：
 
 | 选项 | 填写 | 说明 |
 |------|------|------|
@@ -104,7 +117,7 @@ udp2raw 的工作原理：**有公网 IP 的一方跑服务端，NAT 后面的�
 这是升级时的正常保护提示，不是错误——opkg 保留了你现有的配置，把新默认配置放到了 `-opkg` 旁边。想用���新配置就 `rm /etc/config/udp2raw` 后重装。
 
 **Q：卸载后配置还在吗？**
-本插件的 `postrm` 会在**真正卸载**（`opkg remove`）时自动删除 `/etc/config/udp2raw`；**升级**时则保留配置不动。
+本插件的 `postrm` 会在**真正卸载**（`opkg remove` 或 `apk del`）时自动删除 `/etc/config/udp2raw`；**升级**时则保留配置不动。
 
 **Q：菜单不显示 / 界面空白？**
 清缓存刷新：`rm -f /tmp/luci-modulecache/* /tmp/luci-indexcache*`，然后浏览器 Ctrl+F5。
@@ -117,11 +130,43 @@ udp2raw 的工作原理：**有公网 IP 的一方跑服务端，NAT 后面的�
 ## 从 SDK 编译
 
 ```sh
-cp -r luci-app-udp2raw-ultra <sdk>/package/
 cd <sdk>
+git clone https://github.com/altman08/luci-app-udp2raw-ultra.git package/luci-app-udp2raw-ultra
+# 安装 SDK 所需的 feeds 后，在 LuCI → Applications 中选中本插件
+make menuconfig
 make package/luci-app-udp2raw-ultra/compile V=s
-# 产物：bin/packages/<arch>/base/luci-app-udp2raw-ultra_*.ipk
+# 产物：bin/packages/<arch>/base/，格式由 SDK 决定（.apk 或 .ipk）
 ```
+
+## GitHub Actions 打包发布
+
+提交并推送到本 fork 后，在 **Actions → Release OpenWrt packages → Run workflow** 中填写发布标签（例如 `v1.3.3-r14`），选择是否标记为预发布，然后启动流水线。
+
+流水线参考 `luci-app-shellinabox`，使用 OpenWrt 官方 SDK Action，针对 OpenWrt `25.12.5` 的以下架构构建：
+
+- `x86_64`
+- `aarch64_cortex-a53`（PonWrt AN7581 / AN7583）
+- `aarch64_cortex-a72`
+- `aarch64_generic`
+- `arm_cortex-a7`
+- `arm_cortex-a9`
+
+每个架构生成 `udp2raw` 后端和 `luci-app-udp2raw-ultra` 前端安装包，包格式由 SDK 决定（25.12 使用 APK）。安装包文件名带 SDK 版本和架构，并附 SHA-256 校验文件。全部构建成功后，流水线自动创建或更新 GitHub Release；也可以从每个任务的 Artifacts 下载，构建失败时会上传日志。
+
+无需额外配置发布 Token，使用仓库自带的 `GITHUB_TOKEN`。在 fork 的 Actions 页面启用工作流后即可运行。安装时仍需从与固件匹配的软件源获取 `drill`、`firewall4`、`ip-full`、`luci-base` 等依赖；使用 OpenWrt SDK 编译的后端也需与设备系统和架构兼容。
+
+## 不使用 SDK 直接打包
+
+本插件只有 JS 和 Shell 文件，可以使用 apk-tools 3 的 `mkpkg` 直接生成 `noarch` APK，无需交叉工具链：
+
+```sh
+APK_TOOL=/root/.local/bin/apk.static ./build-apk.sh
+# 产物：dist/luci-app-udp2raw-ultra-1.3.3-r14.apk
+```
+
+默认使用 PATH 中的 `apk`，也可以用 `APK_TOOL` 指定工具路径、`DIST_DIR` 指定输出目录。脚本会写入 OpenWrt 的服务安装/卸载钩子及配置文件清单，并校验生成的 APK。此方式生成未签名的插件包，不包含 `udp2raw` 等依赖的二进制文件。
+
+IPK 仍可使用 `bash build-ipk.sh` 生成。两种包可以同时保存在 `dist/`，重新打包不会清空该目录。
 
 ## 文件结构
 
