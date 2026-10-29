@@ -18,61 +18,7 @@ BYPASS_PROXY="1"
 [ -f "$BYPASS" ] && . "$BYPASS"
 [ -f "$ROUTE_HELPER" ] && . "$ROUTE_HELPER"
 
-# Return 0 if the argument looks like an IPv4 or IPv6 literal, 1 if it's a domain
-is_ip_literal() {
-	local addr="$1"
-	# IPv4
-	case "$addr" in
-		*[!0-9.]*) ;;
-		*.*.*.*) return 0 ;;
-	esac
-	# IPv6 (contains a colon)
-	case "$addr" in
-		*:*) return 0 ;;
-	esac
-	return 1
-}
-
-# Resolve a domain to an address according to family.
-# family: ipv4 (A only, default), ipv6 (AAAA only)
-# Tries the configured DNS first; falls back to the system default resolver.
-resolve_addr() {
-	local domain="$1" family="$2" dns="$3"
-	local ip=""
-
-	_host_a()    { host -t A    "$domain" $1 2>/dev/null | awk '/has address/ {print $NF; exit}'; }
-	_host_aaaa() { host -t AAAA "$domain" $1 2>/dev/null | awk '/has IPv6 address/ {print $NF; exit}'; }
-
-	_drill_a() {
-		local s=""; [ -n "$1" ] && s="@$1"
-		drill "$domain" $s A 2>/dev/null | awk '!/^;/ && $4=="A" {print $5; exit}'
-	}
-	_drill_aaaa() {
-		local s=""; [ -n "$1" ] && s="@$1"
-		drill "$domain" $s AAAA 2>/dev/null | awk '!/^;/ && $4=="AAAA" {print $5; exit}'
-	}
-
-	_resolve_a() {
-		if command -v host >/dev/null 2>&1; then _host_a "$1"; else _drill_a "$1"; fi
-	}
-	_resolve_aaaa() {
-		if command -v host >/dev/null 2>&1; then _host_aaaa "$1"; else _drill_aaaa "$1"; fi
-	}
-
-	_try() {
-		local d="$1"
-		case "$family" in
-			ipv6) _resolve_aaaa "$d" ;;
-			*)    _resolve_a "$d" ;;
-		esac
-	}
-
-	ip=$(_try "$dns")
-	if [ -z "$ip" ] && [ -n "$dns" ]; then
-		ip=$(_try "")
-	fi
-	echo "$ip"
-}
+. /usr/share/udp2raw-ultra/resolve.sh
 
 # Format an address for use in -l / -r (wrap IPv6 in brackets)
 fmt_addr() {

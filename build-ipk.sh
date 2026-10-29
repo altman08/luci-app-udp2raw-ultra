@@ -46,7 +46,7 @@ Maintainer: $MAINTAINER
 Section: luci
 Priority: optional
 Installed-Size: $INSTALLED_SIZE
-Depends: luci-base, udp2raw, drill, firewall4, ip-full
+Depends: luci-base, udp2raw, firewall4, ip-full
 Description: $DESCRIPTION
 Homepage: $HOMEPAGE
 License: $LICENSE

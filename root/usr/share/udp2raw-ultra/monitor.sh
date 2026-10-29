@@ -15,59 +15,7 @@ DNS_SERVER=""
 CHECK_INTERVAL="60"
 BYPASS_PROXY="1"
 
-is_ip_literal() {
-	local addr="$1"
-	case "$addr" in
-		*[!0-9.]*) ;;
-		*.*.*.*) return 0 ;;
-	esac
-	case "$addr" in
-		*:*) return 0 ;;
-	esac
-	return 1
-}
-
-# Tries the configured DNS first; falls back to the system default resolver
-# if it returns nothing (e.g. IPv6 DNS but no IPv6 WAN, or unreachable).
-resolve_addr() {
-	local domain="$1" family="$2" dns="$3"
-	local ip=""
-
-	# Primary resolver: host (from bind-host). $1 = dns (may be empty).
-	_host_a()    { host -t A    "$domain" $1 2>/dev/null | awk '/has address/ {print $NF; exit}'; }
-	_host_aaaa() { host -t AAAA "$domain" $1 2>/dev/null | awk '/has IPv6 address/ {print $NF; exit}'; }
-
-	# Alternate resolver: drill (from ldns-utils). $1 = dns (may be empty).
-	_drill_a() {
-		local s=""; [ -n "$1" ] && s="@$1"
-		drill "$domain" $s A 2>/dev/null | awk '!/^;/ && $4=="A" {print $5; exit}'
-	}
-	_drill_aaaa() {
-		local s=""; [ -n "$1" ] && s="@$1"
-		drill "$domain" $s AAAA 2>/dev/null | awk '!/^;/ && $4=="AAAA" {print $5; exit}'
-	}
-
-	_resolve_a() {
-		if command -v host >/dev/null 2>&1; then _host_a "$1"; else _drill_a "$1"; fi
-	}
-	_resolve_aaaa() {
-		if command -v host >/dev/null 2>&1; then _host_aaaa "$1"; else _drill_aaaa "$1"; fi
-	}
-
-	_try() {
-		local d="$1"
-		case "$family" in
-			ipv6) _resolve_aaaa "$d" ;;
-			*)    _resolve_a "$d" ;;
-		esac
-	}
-
-	ip=$(_try "$dns")
-	if [ -z "$ip" ] && [ -n "$dns" ]; then
-		ip=$(_try "")
-	fi
-	echo "$ip"
-}
+. /usr/share/udp2raw-ultra/resolve.sh
 
 # Collect domain-based client rules into a list
 MONITORED=""

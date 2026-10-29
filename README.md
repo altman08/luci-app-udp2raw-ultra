@@ -24,18 +24,18 @@
 
 - `luci-base`：LuCI 网页运行环境
 - `udp2raw`：隧道程序
-- `drill`：域名解析工具；运行时也支持已安装的 `bind-host`
+- 固件提供的 `nslookup`（通常由 BusyBox 提供）：域名解析与 DDNS 监控
 - `firewall4`：fw4/nftables 防火墙
 - `ip-full`：IPv4/IPv6 策略路由
 
-安装时会自动拉取依赖。使用明确的 `drill` 依赖，兼容 APK 和 IPK，避免 APK 无法解析 `bind-host | drill`。
+安装时会自动拉取软件包依赖。DNS 查询直接使用固件自带的 `nslookup`，无需额外安装 DNS 工具；自定义精简固件需保留 BusyBox 的 `nslookup` 功能。支持指定 DNS、IPv4/IPv6 地址筛选，指定 DNS 无结果时回退到系统 DNS。
 
 ## 安装
 
 APK 固件（独立脚本生成的包未签名）：
 
 ```sh
-apk add --allow-untrusted ./luci-app-udp2raw-ultra-1.3.3-r14.apk
+apk add --allow-untrusted ./luci-app-udp2raw-ultra-1.3.3-r15.apk
 ```
 
 IPK 固件：
@@ -140,7 +140,7 @@ make package/luci-app-udp2raw-ultra/compile V=s
 
 ## GitHub Actions 打包发布
 
-提交并推送到本 fork 后，在 **Actions → Release OpenWrt packages → Run workflow** 中填写发布标签（例如 `v1.3.3-r14`），选择是否标记为预发布，然后启动流水线。
+提交并推送到本 fork 后，在 **Actions → Release OpenWrt packages → Run workflow** 中填写发布标签（例如 `v1.3.3-r15`），选择是否标记为预发布，然后启动流水线。
 
 流水线参考 `luci-app-shellinabox`，使用 OpenWrt 官方 SDK Action，针对 OpenWrt `25.12.5` 的以下架构构建：
 
@@ -153,7 +153,7 @@ make package/luci-app-udp2raw-ultra/compile V=s
 
 每个架构生成 `udp2raw` 后端和 `luci-app-udp2raw-ultra` 前端安装包，包格式由 SDK 决定（25.12 使用 APK）。安装包文件名带 SDK 版本和架构，并附 SHA-256 校验文件。全部构建成功后，流水线自动创建或更新 GitHub Release；也可以从每个任务的 Artifacts 下载，构建失败时会上传日志。
 
-无需额外配置发布 Token，使用仓库自带的 `GITHUB_TOKEN`。在 fork 的 Actions 页面启用工作流后即可运行。安装时仍需从与固件匹配的软件源获取 `drill`、`firewall4`、`ip-full`、`luci-base` 等依赖；使用 OpenWrt SDK 编译的后端也需与设备系统和架构兼容。
+无需额外配置发布 Token，使用仓库自带的 `GITHUB_TOKEN`。在 fork 的 Actions 页面启用工作流后即可运行。安装时仍需从与固件匹配的软件源获取 `firewall4`、`ip-full`、`luci-base` 等依赖；使用 OpenWrt SDK 编译的后端也需与设备系统和架构兼容。
 
 ## 不使用 SDK 直接打包
 
@@ -161,7 +161,7 @@ make package/luci-app-udp2raw-ultra/compile V=s
 
 ```sh
 APK_TOOL=/root/.local/bin/apk.static ./build-apk.sh
-# 产物：dist/luci-app-udp2raw-ultra-1.3.3-r14.apk
+# 产物：dist/luci-app-udp2raw-ultra-1.3.3-r15.apk
 ```
 
 默认使用 PATH 中的 `apk`，也可以用 `APK_TOOL` 指定工具路径、`DIST_DIR` 指定输出目录。脚本会写入 OpenWrt 的服务安装/卸载钩子及配置文件清单，并校验生成的 APK。此方式生成未签名的插件包，不包含 `udp2raw` 等依赖的二进制文件。
@@ -175,6 +175,7 @@ IPK 仍可使用 `bash build-ipk.sh` 生成。两种包可以同时保存在 `di
 | `root/etc/config/udp2raw` | UCI 配置（全局选项 + 规则列表） |
 | `root/etc/init.d/udp2raw` | procd 服务，每条启用的规则起一个 udp2raw 实例 |
 | `root/usr/share/udp2raw-ultra/monitor.sh` | DDNS 监控守护进程 |
+| `root/usr/share/udp2raw-ultra/resolve.sh` | 共用的 nslookup 域名解析与地址族筛选 |
 | `root/usr/share/luci/menu.d/*.json` | 菜单注册 |
 | `root/usr/share/rpcd/acl.d/*.json` | ACL 权限 |
 | `htdocs/luci-static/resources/view/udp2raw-ultra/udp2raw.js` | 网页界面 |

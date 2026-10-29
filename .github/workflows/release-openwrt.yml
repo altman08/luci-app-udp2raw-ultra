@@ -52,6 +52,9 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Test DNS resolver
+        run: sh tests/test-resolve.sh
+
       - name: Prepare package feed
         run: |
           set -euo pipefail

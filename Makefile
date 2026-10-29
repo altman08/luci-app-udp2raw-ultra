@@ -8,15 +8,15 @@ include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for udp2raw (Ultra, multi-rule)
 LUCI_DESCRIPTION:=Web UI for udp2raw with a rule list. Each rule is an independent server or client instance, with domain auto-resolve and DDNS monitoring.
-# Use one concrete DNS provider so both opkg and apk can resolve dependencies.
-LUCI_DEPENDS:=+luci-base +udp2raw +drill +firewall4 +ip-full
+# DNS lookup uses nslookup supplied by the firmware.
+LUCI_DEPENDS:=+luci-base +udp2raw +firewall4 +ip-full
 LUCI_PKGARCH:=all
 LUCI_URL:=https://github.com/altman08/luci-app-udp2raw-ultra
 LUCI_MAINTAINER:=Kwrt
 
 PKG_NAME:=luci-app-udp2raw-ultra
 PKG_VERSION:=1.3.3
-PKG_RELEASE:=14
+PKG_RELEASE:=15
 
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Kwrt
