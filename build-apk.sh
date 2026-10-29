@@ -3,13 +3,14 @@
 set -eu
 cd -- "$(dirname -- "$0")"
 
+package_dir=luci-app-udp2raw-ultra
 APK_TOOL=${APK_TOOL:-apk}
 command -v "$APK_TOOL" >/dev/null 2>&1 || {
 	echo 'Set APK_TOOL to an apk-tools 3 executable.' >&2
 	exit 1
 }
 read_field() {
-	sed -n "s/^$1:=//p" Makefile | tr -d '\r\n'
+	sed -n "s/^$1:=//p" "$package_dir/Makefile" | tr -d '\r\n'
 }
 name=$(read_field PKG_NAME)
 version=$(read_field PKG_VERSION)
@@ -32,8 +33,8 @@ trap 'exit 1' HUP INT TERM
 data="$work/data"
 meta="$data/lib/apk/packages"
 mkdir -p "$data/www" "$meta"
-cp -R root/. "$data/"
-cp -R htdocs/. "$data/www/"
+cp -R "$package_dir/root/." "$data/"
+cp -R "$package_dir/htdocs/." "$data/www/"
 chmod 0755 "$data/etc/init.d/udp2raw" "$data/usr/share/udp2raw-ultra/"*.sh
 
 # Use the same bookkeeping files and lifecycle helpers as OpenWrt's APK build.
@@ -76,7 +77,7 @@ awk -v hook_name="Package/$name/postrm" '
 	$0 == "define " hook_name { hook=1; next }
 	hook && /^endef$/ { exit }
 	hook { gsub(/\$\$/, "$"); print }
-' Makefile > "$work/post-deinstall"
+' "$package_dir/Makefile" > "$work/post-deinstall"
 test -s "$work/post-deinstall"
 for hook in post-install post-upgrade pre-deinstall post-deinstall; do
 	sh -n "$work/$hook"

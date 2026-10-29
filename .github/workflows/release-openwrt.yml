@@ -55,20 +55,12 @@ jobs:
       - name: Test DNS resolver
         run: sh tests/test-resolve.sh
 
-      - name: Prepare package feed
-        run: |
-          set -euo pipefail
-          # The SDK feed scanner expects a directory per package.
-          package_dir=".ci-feed/luci-app-udp2raw-ultra"
-          mkdir -p "$package_dir"
-          cp -a Makefile root htdocs "$package_dir/"
-
       - name: Build OpenWrt packages
         uses: openwrt/gh-action-sdk@v11
         timeout-minutes: 75
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.sdk }}
-          FEED_DIR: ${{ github.workspace }}/.ci-feed
+          FEED_DIR: ${{ github.workspace }}
           # Runtime dependencies, including udp2raw, come from the SDK feeds.
           PACKAGES: luci-app-udp2raw-ultra
           V: sc

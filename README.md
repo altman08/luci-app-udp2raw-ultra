@@ -127,15 +127,38 @@ udp2raw 的工作原理：**有公网 IP 的一方跑服务端，NAT 后面的�
 - 服务端防火墙要放行对应端口（faketcp 走 TCP）
 - 用 `logread | grep udp2raw` 看日志
 
-## 从 SDK 编译
+## 加入 feeds 编译
+
+仓库按 feed 组织，包定义和安装文件位于 `luci-app-udp2raw-ultra/` 子目录。以下命令在 OpenWrt / ImmortalWrt / PonWrt 源码或 SDK 根目录执行，标准 `packages`、`luci` feeds 需先准备好。
+
+在 `feeds.conf.default`（若使用自定义 `feeds.conf`，则修改该文件）中加入：
+
+```text
+src-git udp2raw_ultra https://github.com/altman08/luci-app-udp2raw-ultra.git
+```
+
+更新、安装软件包定义：
 
 ```sh
-cd <sdk>
-git clone https://github.com/altman08/luci-app-udp2raw-ultra.git package/luci-app-udp2raw-ultra
-# 安装 SDK 所需的 feeds 后，在 LuCI → Applications 中选中本插件
+./scripts/feeds update udp2raw_ultra
+./scripts/feeds install -p udp2raw_ultra luci-app-udp2raw-ultra
 make menuconfig
+```
+
+在 **LuCI → Applications** 中选中 `luci-app-udp2raw-ultra`。选为 `y` 内置到固件，选为 `m` 仅生成安装包；`udp2raw` 等依赖由构建系统自动选择，无需手动启用。
+
+```sh
+make defconfig
 make package/luci-app-udp2raw-ultra/compile V=s
-# 产物：bin/packages/<arch>/base/，格式由 SDK 决定（.apk 或 .ipk）
+# 安装包：bin/packages/<arch>/udp2raw_ultra/，格式由源码或 SDK 决定
+```
+
+完整固件编译则在 `make defconfig` 后执行常规的 `make`。
+
+本地开发时，可把同一条 feed 改为指向仓库根目录：
+
+```text
+src-link udp2raw_ultra /path/to/luci-app-udp2raw-ultra
 ```
 
 ## GitHub Actions 打包发布
@@ -172,13 +195,13 @@ IPK 仍可使用 `bash build-ipk.sh` 生成。两种包可以同时保存在 `di
 
 | 路径 | 作用 |
 |------|------|
-| `root/etc/config/udp2raw` | UCI 配置（全局选项 + 规则列表） |
-| `root/etc/init.d/udp2raw` | procd 服务，每条启用的规则起一个 udp2raw 实例 |
-| `root/usr/share/udp2raw-ultra/monitor.sh` | DDNS 监控守护进程 |
-| `root/usr/share/udp2raw-ultra/resolve.sh` | 共用的 nslookup 域名解析与地址族筛选 |
-| `root/usr/share/luci/menu.d/*.json` | 菜单注册 |
-| `root/usr/share/rpcd/acl.d/*.json` | ACL 权限 |
-| `htdocs/luci-static/resources/view/udp2raw-ultra/udp2raw.js` | 网页界面 |
+| `luci-app-udp2raw-ultra/root/etc/config/udp2raw` | UCI 配置（全局选项 + 规则列表） |
+| `luci-app-udp2raw-ultra/root/etc/init.d/udp2raw` | procd 服务，每条启用的规则起一个 udp2raw 实例 |
+| `luci-app-udp2raw-ultra/root/usr/share/udp2raw-ultra/monitor.sh` | DDNS 监控守护进程 |
+| `luci-app-udp2raw-ultra/root/usr/share/udp2raw-ultra/resolve.sh` | 共用的 nslookup 域名解析与地址族筛选 |
+| `luci-app-udp2raw-ultra/root/usr/share/luci/menu.d/*.json` | 菜单注册 |
+| `luci-app-udp2raw-ultra/root/usr/share/rpcd/acl.d/*.json` | ACL 权限 |
+| `luci-app-udp2raw-ultra/htdocs/luci-static/resources/view/udp2raw-ultra/udp2raw.js` | 网页界面 |
 
 ## 许可
 

@@ -8,8 +8,8 @@
 Makefile text eol=lf
 
 # init scripts and UCI configs have no extension
-root/etc/init.d/*   text eol=lf
-root/etc/config/*   text eol=lf
+luci-app-udp2raw-ultra/root/etc/init.d/*   text eol=lf
+luci-app-udp2raw-ultra/root/etc/config/*   text eol=lf
 
 # Binary assets - never touch line endings
 *.jpg   binary

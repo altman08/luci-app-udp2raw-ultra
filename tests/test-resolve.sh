@@ -2,7 +2,7 @@
 set -eu
 
 src=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-. "$src/root/usr/share/udp2raw-ultra/resolve.sh"
+. "$src/luci-app-udp2raw-ultra/root/usr/share/udp2raw-ultra/resolve.sh"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 trap 'exit 1' HUP INT TERM

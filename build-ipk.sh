@@ -3,9 +3,10 @@ set -e
 
 cd -- "$(dirname -- "$0")"
 
+PACKAGE_DIR="luci-app-udp2raw-ultra"
 PKG_NAME="luci-app-udp2raw-ultra"
-PKG_VERSION="$(sed -n 's/^PKG_VERSION:=//p' Makefile | head -n1 | tr -d '\r[:space:]')"
-PKG_RELEASE="$(sed -n 's/^PKG_RELEASE:=//p' Makefile | head -n1 | tr -d '\r[:space:]')"
+PKG_VERSION="$(sed -n 's/^PKG_VERSION:=//p' "$PACKAGE_DIR/Makefile" | head -n1 | tr -d '\r[:space:]')"
+PKG_RELEASE="$(sed -n 's/^PKG_RELEASE:=//p' "$PACKAGE_DIR/Makefile" | head -n1 | tr -d '\r[:space:]')"
 MAINTAINER="Kwrt"
 DESCRIPTION="LuCI support for udp2raw (Ultra, multi-rule with server firewall and route_via_wan)"
 HOMEPAGE="https://github.com/altman08/luci-app-udp2raw-ultra"
@@ -26,10 +27,10 @@ mkdir -p "$DATA_DIR"
 mkdir -p "$DIST_DIR"
 DIST_DIR="$(cd -- "$DIST_DIR" && pwd)"
 
-cp -a root/. "$DATA_DIR/"
-if [ -d htdocs ]; then
+cp -a "$PACKAGE_DIR/root/." "$DATA_DIR/"
+if [ -d "$PACKAGE_DIR/htdocs" ]; then
     mkdir -p "$DATA_DIR/www"
-    cp -a htdocs/. "$DATA_DIR/www/"
+    cp -a "$PACKAGE_DIR/htdocs/." "$DATA_DIR/www/"
 fi
 find "$DATA_DIR" -type f -name '*.sh' -exec chmod 755 {} +
 find "$DATA_DIR/etc/init.d" -type f -exec chmod 755 {} + 2>/dev/null || true
