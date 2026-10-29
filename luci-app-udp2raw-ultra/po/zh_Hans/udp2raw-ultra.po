@@ -257,7 +257,7 @@ msgid "Tunnel rules"
 msgstr "隧道规则"
 
 msgid "UDP Traffic Obfuscation"
-msgstr "UDP 流量伪装"
+msgstr "UDP 伪装"
 
 msgid "Unknown error"
 msgstr "未知错误"
