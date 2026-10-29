@@ -57,18 +57,18 @@ function showRuleLogModal(name) {
 		'id': logId,
 		'style': 'max-height:400px;overflow:auto;background:#1e1e1e;color:#d4d4d4;' +
 			'padding:12px;border-radius:6px;font-size:12px;line-height:1.5;white-space:pre-wrap;margin:0'
-	}, '加载中…');
-	ui.showModal('规则日志：' + name, [
+	}, _("Loading…"));
+	ui.showModal(_("Rule log: %s").format(name), [
 		E('p', { 'style': 'color:#666;font-size:12px;margin-top:0' },
-			'最近 100 条有意义的日志事件（已过滤高频噪音）。'),
+			_("Recent 100 relevant log events (frequent noise is filtered out).")),
 		pre,
 		E('div', { 'class': 'right', 'style': 'margin-top:12px' }, [
-			E('button', { 'class': 'cbi-button cbi-button-neutral', 'click': ui.hideModal }, '关闭')
+			E('button', { 'class': 'cbi-button cbi-button-neutral', 'click': ui.hideModal }, _("Close"))
 		])
 	]);
 	getRuleLog(name).then(function (text) {
 		var el = document.getElementById(logId);
-		if (el) el.textContent = text || '（暂无相关日志）';
+		if (el) el.textContent = text || _("(No relevant logs yet)");
 	});
 }
 
@@ -111,10 +111,10 @@ function isRunning(name) {
 function ruleAction(action, name) {
 	return fs.exec(INIT, [ action, name ]).then(function (res) {
 		if (res && res.code !== 0)
-			ui.addNotification(null, E('p', {}, '操作失败：%s'.format((res.stderr || res.stdout || '未知错误'))), 'error');
+			ui.addNotification(null, E('p', {}, _("Operation failed: %s").format((res.stderr || res.stdout || _("Unknown error")))), 'error');
 		return res;
 	}).catch(function (e) {
-		ui.addNotification(null, E('p', {}, '操作失败：%s'.format(e.message || e)), 'error');
+		ui.addNotification(null, E('p', {}, _("Operation failed: %s").format(e.message || e)), 'error');
 	});
 }
 
@@ -136,8 +136,8 @@ function runRuleAction(action, name, section_id) {
 	var enabled = uci.get('udp2raw', section_id, 'enabled');
 	var isEnabled = (enabled === '1' || enabled === undefined);
 
-	transient[name] = (action === 'rule_stop') ? '停止中'
-		: (action === 'rule_restart') ? '重启中' : '启动中';
+	transient[name] = (action === 'rule_stop') ? _("Stopping")
+		: (action === 'rule_restart') ? _("Restarting") : _("Starting");
 	rowUpdaters.forEach(function (fn) { try { fn(); } catch (e) { } });
 
 	var p;
@@ -205,37 +205,37 @@ return view.extend({
 		var curWanIface = 'wan';
 		if (wanNets.length)
 			curWanIface = wanNets[0].getName();
-		var autoLabel = '自动（当前 %s）'.format(curWanIface);
+		var autoLabel = _("Automatic (currently %s)").format(curWanIface);
 
-		m = new form.Map('udp2raw', 'UDP2RAW',
-			'将 UDP 流量伪装成 FakeTCP/UDP/ICMP，绕过 UDP QoS 限速或封锁。可添加多条规则，每条独立作为服务端或客户端。配合 WireGuard/AmneziaWG 使用效果最佳。');
+		m = new form.Map('udp2raw', _("UDP Traffic Obfuscation"),
+			_("Encapsulate UDP traffic as FakeTCP/UDP/ICMP to bypass UDP throttling or blocking. Each rule runs as an independent server or client. Works best with WireGuard/AmneziaWG."));
 
 		// ---- 全局设置 ----
-		s = m.section(form.NamedSection, 'global', 'global', '全局设置');
+		s = m.section(form.NamedSection, 'global', 'global', _("Global settings"));
 		s.addremove = false;
 
-		o = s.option(form.Value, 'dns_server', '解析 DNS',
-			'用于解析对端域名的 DNS 服务器。建议填 IPv4 地址（如 1.1.1.1），同样能解析 IPv6（AAAA）记录；若填 IPv6 DNS，则本机必须有 IPv6 网络否则解析失败。留空则使用系统默认 DNS。解析失败时会自动降级到系统默认 DNS 重试。');
+		o = s.option(form.Value, 'dns_server', _("DNS server"),
+			_("DNS server used to resolve peer hostnames. An IPv4 address (e.g. 1.1.1.1) can also resolve IPv6 (AAAA) records. An IPv6 DNS server requires working IPv6 connectivity. Leave empty to use system DNS. Failed queries fall back to system DNS."));
 		o.default = '1.1.1.1';
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'check_interval', '检测间隔（秒）',
-			'多久重新解析一次客户端域名，若对端 IP 变化则自动重启隧道。');
+		o = s.option(form.Value, 'check_interval', _("Check interval (seconds)"),
+			_("How often to resolve client peer hostnames again. The tunnel restarts automatically when the peer IP changes."));
 		o.datatype = 'uinteger';
 		o.default = '60';
 
-		o = s.option(form.Value, 'log_max', '日志保留条数',
-			'每条规则最多保留的日志行数。');
+		o = s.option(form.Value, 'log_max', _("Log line limit"),
+			_("Maximum number of log lines retained for each rule."));
 		o.datatype = 'uinteger';
 		o.default = '100';
 
-		o = s.option(form.Flag, 'bypass_proxy', 'DNS 解析绕过代理',
-			'强制发往上面「解析 DNS」的查询走物理 WAN 出口，不经过任何代理（如 WireGuard）。避免隧道断开后因解析走隧道而无法重连的死锁。除非有特殊分流需求，建议保持开启。');
+		o = s.option(form.Flag, 'bypass_proxy', _("Bypass proxy for DNS queries"),
+			_("Send queries to the configured DNS server through the physical WAN, bypassing proxies such as WireGuard. This prevents a disconnected tunnel from blocking DNS resolution and reconnection. Keep enabled unless custom routing requires otherwise."));
 		o.default = '1';
 		o.rmempty = false;
 
-		o = s.option(form.ListValue, 'wan_iface', '外网接口',
-			'「DNS 解析绕过代理」使用的物理外网接口。留空为自动检测（默认 wan 接口）。若外网口改过名或有多 WAN，请手动指定。');
+		o = s.option(form.ListValue, 'wan_iface', _("WAN interface"),
+			_("Physical WAN interface used to bypass proxies for DNS queries. Leave empty for automatic detection (wan by default). Select an interface if WAN was renamed or multiple WANs exist."));
 		o.value('', autoLabel);
 		networks.forEach(function (net) {
 			var name = net.getName();
@@ -245,36 +245,34 @@ return view.extend({
 		o.default = '';
 		o.depends('bypass_proxy', '1');
 
-		o = s.option(form.Flag, 'ttl_normalize', 'TTL 归一化（服务端）',
-			'将出口包的 TTL（IPv4）和 hoplimit（IPv6）强制设为 64，抹除隧道中转痕迹，' +
-			'使出口流量看起来像本地直发，避免被运营商 DPI 识别为代理/隧道流量。' +
-			'仅服务端出口需要，客户端开启无副作用。使用「外网接口」字段指定出口设备。');
+		o = s.option(form.Flag, 'ttl_normalize', _("Normalize TTL (server)"),
+			_("Set outgoing IPv4 TTL and IPv6 hop limit to 64 to hide tunnel forwarding, making traffic appear locally originated to avoid proxy/tunnel detection by ISP DPI. Only needed on the server egress; harmless on clients. Select the egress device with WAN interface."));
 		o.default = '1';
 		o.rmempty = false;
 
 		// ---- 规则列表 ----
-		s = m.section(form.GridSection, 'rule', '隧道规则',
-			'每条规则是一个独立的 udp2raw 实例。服务端 = 有公网 IP/IPv6 的一方；客户端 = 处于 NAT 后的一方。');
+		s = m.section(form.GridSection, 'rule', _("Tunnel rules"),
+			_("Each rule is an independent udp2raw instance. The server has a public IP/IPv6 address; the client is behind NAT."));
 		s.addremove = true;
 		s.anonymous = true;
 		s.sortable = true;
 		s.nodescriptions = true;
-		s.addbtntitle = '添加规则';
+		s.addbtntitle = _("Add rule");
 
 		// --- 列表显示的列 ---
-		o = s.option(form.Flag, 'enabled', '启用');
+		o = s.option(form.Flag, 'enabled', _("Enable"));
 		o.editable = true;
 
-		o = s.option(form.Value, 'name', '名称');
+		o = s.option(form.Value, 'name', _("Name"));
 		o.rmempty = false;
 		o.placeholder = 'peerA';
 
-		o = s.option(form.ListValue, 'mode', '模式');
-		o.value('server', '服务端');
-		o.value('client', '客户端');
+		o = s.option(form.ListValue, 'mode', _("Mode"));
+		o.value('server', _("Server"));
+		o.value('client', _("Client"));
 		o.default = 'client';
 
-		o = s.option(form.DummyValue, '_target', '目标');
+		o = s.option(form.DummyValue, '_target', _("Target"));
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			var mode = uci.get('udp2raw', section_id, 'mode') || 'client';
@@ -283,7 +281,7 @@ return view.extend({
 				var lp = uci.get('udp2raw', section_id, 'listen_port') || '?';
 				var fa = uci.get('udp2raw', section_id, 'forward_addr') || '127.0.0.1';
 				var fp = uci.get('udp2raw', section_id, 'forward_port') || '?';
-				return '监听 :%s → %s:%s'.format(lp, fa, fp);
+				return _("Listening :%s → %s:%s").format(lp, fa, fp);
 			} else {
 				var a = uci.get('udp2raw', section_id, 'address') || '?';
 				var p = uci.get('udp2raw', section_id, 'port') || '?';
@@ -299,19 +297,19 @@ return view.extend({
 					var el = document.getElementById(resId);
 					if (!el) return;
 					var ip = resolvedCache[name];
-					el.textContent = ip ? ('当前解析：' + ip) : '当前解析：—';
+					el.textContent = _("Resolved address: %s").format(ip || "—");
 				};
 				rowUpdaters.push(upd);
 				ensurePoll();
 				requestAnimationFrame(upd);
 				return E('div', {}, [
 					E('div', {}, line1),
-					E('div', { 'id': resId, 'style': 'font-size:12px;color:#666;margin-top:2px' }, '当前解析：—')
+					E('div', { 'id': resId, 'style': 'font-size:12px;color:#666;margin-top:2px' }, _("Resolved address: %s").format("—"))
 				]);
 			}
 		};
 
-		o = s.option(form.DummyValue, '_status', '状态');
+		o = s.option(form.DummyValue, '_status', _("Status"));
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			var name = uci.get('udp2raw', section_id, 'name') || section_id;
@@ -352,8 +350,8 @@ return view.extend({
 						stEl.innerHTML = '<span style="color:#ef6c00"><strong>' + t + '</strong></span>';
 					else
 						stEl.innerHTML = running
-							? '<span style="color:#2e7d32"><strong>运行中</strong></span>'
-							: '<span style="color:#999">已停止</span>';
+							? '<span style="color:#2e7d32"><strong>' + _("Running") + '</strong></span>'
+							: '<span style="color:#999">' + _("Stopped") + '</span>';
 				}
 
 				if (cnEl) {
@@ -363,17 +361,17 @@ return view.extend({
 							'href': '#',
 							'style': 'font-size:12px;color:#337ab7',
 							'click': function (ev) { ev.preventDefault(); showRuleLogModal(name); }
-						}, '查看日志'));
+						}, _("View logs")));
 					}
 				}
 
 				if (actEl) {
 					var busy = !!t;
 					var btns = running
-						? [ mkBtn('重启', 'action',   'rule_restart', busy),
-						    mkBtn('停止', 'negative', 'rule_stop',    busy) ]
-						: [ mkBtn('启动', 'positive', 'rule_start',   busy),
-						    mkBtn('停止', 'neutral',  'rule_stop',    true) ];
+						? [ mkBtn(_("Restart"), 'action',   'rule_restart', busy),
+						    mkBtn(_("Stop"), 'negative', 'rule_stop',    busy) ]
+						: [ mkBtn(_("Start"), 'positive', 'rule_start',   busy),
+						    mkBtn(_("Stop"), 'neutral',  'rule_stop',    true) ];
 					actEl.innerHTML = '';
 					btns.forEach(function (b) { actEl.appendChild(b); });
 				}
@@ -389,7 +387,7 @@ return view.extend({
 		};
 
 		// --- 操作按钮列（内容由上面的 updater 统一填充）---
-		o = s.option(form.DummyValue, '_actions', '操作');
+		o = s.option(form.DummyValue, '_actions', _("Actions"));
 		o.modalonly = false;
 		o.textvalue = function (section_id) {
 			return E('div', { 'id': 'act_' + section_id, 'style': 'display:flex;justify-content:center;white-space:nowrap' }, '...');
@@ -397,57 +395,57 @@ return view.extend({
 
 		// ================= 详细（弹窗）选项 =================
 
-		o = s.option(form.ListValue, 'family', '地址族',
-			'仅客户端。解析对端域名时选择记录类型（IPv4=A 记录，IPv6=AAAA 记录）。对端为 IP 时忽略。');
-		o.value('ipv4', '仅 IPv4');
-		o.value('ipv6', '仅 IPv6');
+		o = s.option(form.ListValue, 'family', _("Address family"),
+			_("Client only. Select the DNS record type for peer hostnames (IPv4=A, IPv6=AAAA). Ignored for IP literals."));
+		o.value('ipv4', _("IPv4 only"));
+		o.value('ipv6', _("IPv6 only"));
 		o.default = 'ipv4';
 		o.depends('mode', 'client');
 		o.modalonly = true;
 
 		// --- 客户端专用：对端地址/端口 ---
-		o = s.option(form.Value, 'address', '对端地址',
-			'仅客户端。对端的 IP 或域名。填域名时会自动解析并监控其变化。');
+		o = s.option(form.Value, 'address', _("Peer address"),
+			_("Client only. Peer IP address or hostname. Hostnames are resolved automatically and monitored for changes."));
 		o.depends('mode', 'client');
 		o.modalonly = true;
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'port', '对端端口',
-			'仅客户端。对端上的 udp2raw 端口（即服务端的监听端口）。');
+		o = s.option(form.Value, 'port', _("Peer port"),
+			_("Client only. The remote udp2raw port (the server listening port)."));
 		o.datatype = 'port';
 		o.depends('mode', 'client');
 		o.modalonly = true;
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'listen_addr', '本地监听地址',
-			'仅客户端。本地暴露隧道 UDP 端点的地址，通常为 127.0.0.1。');
+		o = s.option(form.Value, 'listen_addr', _("Local listen address"),
+			_("Client only. Address of the local UDP tunnel endpoint, usually 127.0.0.1."));
 		o.placeholder = '127.0.0.1';
 		o.depends('mode', 'client');
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'listen_port', '监听端口',
-			'服务端：对外监听的 FakeTCP/UDP/ICMP 端口。客户端：本地应用（如 WireGuard 对端端点）连接的 UDP 端口。');
+		o = s.option(form.Value, 'listen_port', _("Listen port"),
+			_("Server: public FakeTCP/UDP/ICMP port. Client: local UDP port used by applications such as WireGuard."));
 		o.datatype = 'port';
 		o.modalonly = true;
 		o.rmempty = false;
 
 		// --- 服务端专用：转发目标 ---
-		o = s.option(form.Value, 'forward_addr', '转发到地址',
-			'仅服务端。要转发到的真实本地 UDP 服务地址（如本地 WireGuard 填 127.0.0.1）。');
+		o = s.option(form.Value, 'forward_addr', _("Forward address"),
+			_("Server only. Address of the actual local UDP service (e.g. 127.0.0.1 for local WireGuard)."));
 		o.placeholder = '127.0.0.1';
 		o.depends('mode', 'server');
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'forward_port', '转发到端口',
-			'仅服务端。真实 UDP 服务端口（如 WireGuard/AmneziaWG 的 51820）。');
+		o = s.option(form.Value, 'forward_port', _("Forward port"),
+			_("Server only. Port of the actual UDP service (e.g. 51820 for WireGuard/AmneziaWG)."));
 		o.datatype = 'port';
 		o.depends('mode', 'server');
 		o.modalonly = true;
 		o.rmempty = false;
 
 		// --- 共享加密/混淆参数（两端必须一致）---
-		o = s.option(form.Value, 'password', '密码',
-			'预共享密码，两端必须完全一致。点击「生成」可自动创建随机密码。');
+		o = s.option(form.Value, 'password', _("Password"),
+			_("Pre-shared password; must match on both ends. Click Generate to create a random password."));
 		o.password = true;
 		o.modalonly = true;
 		o.rmempty = false;
@@ -473,26 +471,26 @@ return view.extend({
 					}
 					return false;
 				}
-			}, '生成');
+			}, _("Generate"));
 			return E('div', { 'style': 'display:flex;align-items:center' }, [ node, btn ]);
 		};
 
-		o = s.option(form.ListValue, 'raw_mode', '伪装模式',
-			'数据包伪装方式，两端必须一致。');
+		o = s.option(form.ListValue, 'raw_mode', _("Raw mode"),
+			_("Packet encapsulation mode; must match on both ends."));
 		o.value('faketcp', 'faketcp');
 		o.value('udp', 'udp');
 		o.value('icmp', 'icmp');
 		o.default = 'faketcp';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'cipher_mode', '加密方式');
+		o = s.option(form.ListValue, 'cipher_mode', _("Cipher mode"));
 		o.value('aes128cbc', 'aes128cbc');
 		o.value('xor', 'xor');
 		o.value('none', 'none');
 		o.default = 'aes128cbc';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'auth_mode', '认证方式');
+		o = s.option(form.ListValue, 'auth_mode', _("Authentication mode"));
 		o.value('md5', 'md5');
 		o.value('crc32', 'crc32');
 		o.value('simple', 'simple');
@@ -500,8 +498,8 @@ return view.extend({
 		o.default = 'md5';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'seq_mode', 'Seq 模式',
-			'faketcp 的 seq 模式（0-4）。3 模拟接近真实的 TCP 握手过程。');
+		o = s.option(form.ListValue, 'seq_mode', _("Sequence mode"),
+			_("FakeTCP sequence mode (0-4). Mode 3 closely simulates a real TCP handshake."));
 		o.value('0', '0');
 		o.value('1', '1');
 		o.value('2', '2');
@@ -511,53 +509,47 @@ return view.extend({
 		o.depends('raw_mode', 'faketcp');
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'sock_buf', 'Socket 缓冲区（KB）',
-			'Socket 缓冲区大小，范围 10-10240。并非越大越好，默认 1024。');
+		o = s.option(form.Value, 'sock_buf', _("Socket buffer (KB)"),
+			_("Socket buffer size, 10-10240 KB. Larger is not always better. Default: 1024."));
 		o.datatype = 'range(10,10240)';
 		o.default = '1024';
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'auto_fw', '自动防火墙（服务端）',
-			'仅服务端。勾选后自动向系统防火墙写入放行规则（IPv4 + IPv6），无需手动配置。' +
-			'规则会出现在系统「防火墙」页面，取消勾选并保存会自动清除。' +
-			'使用 fw4 UCI 方式，兼容 iptables-nft 和 iptables-legacy 环境。');
+		o = s.option(form.Flag, 'auto_fw', _("Automatic firewall (server)"),
+			_("Server only. Automatically add IPv4 and IPv6 allow rules to the system firewall. Rules appear on the Firewall page and are removed when this option is disabled and saved. Uses fw4 UCI configuration, compatible with iptables-nft and iptables-legacy environments."));
 		o.default = '1';
 		o.rmempty = false;
 		o.depends('mode', 'server');
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'route_via_wan', '服务端例外路由',
-			'仅客户端。当本机默认路由整体指向隧道（如 WireGuard 全局代理）时，' +
-			'去 udp2raw 服务端的流量会进入隧道，形成死锁。' +
-			'勾选后自动为服务端 IP 写入走物理 WAN 的 /32(/128) 静态路由，绕过隧道。' +
-			'规则可在「网络 → 静态路由」页面看到（udp2raw_ 前缀）。' +
-			'仅全局代理场景需要；普通场景请保持关闭。');
+		o = s.option(form.Flag, 'route_via_wan', _("Route server via WAN"),
+			_("Client only. When the default route points into a tunnel (e.g. full-tunnel WireGuard), traffic to the udp2raw server can enter the tunnel and cause a routing deadlock. Add a /32 (IPv4) or /128 (IPv6) static route for the server IP through the physical WAN. Rules appear on Network → Static Routes with the udp2raw_ prefix. Only needed with full-tunnel routing; otherwise leave disabled."));
 		o.default = '0';
 		o.depends('mode', 'client');
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'retry_on_error', '出错重试',
-			'传入 --retry-on-error，让 udp2raw 出错时持续重试而非退出。');
+		o = s.option(form.Flag, 'retry_on_error', _("Retry on error"),
+			_("Pass --retry-on-error so udp2raw keeps retrying instead of exiting on errors."));
 		o.default = '1';
 		o.modalonly = true;
 
-		o = s.option(form.Flag, 'fix_gro', '修复 GRO',
-			'启用 --fix-gro。大包传输异常时可尝试开启。');
+		o = s.option(form.Flag, 'fix_gro', _("Fix GRO"),
+			_("Enable --fix-gro. Try this if large packet transfers fail."));
 		o.default = '0';
 		o.modalonly = true;
 
-		o = s.option(form.ListValue, 'log_level', '日志级别');
-		o.value('0', '关闭');
-		o.value('1', '致命');
-		o.value('2', '错误');
-		o.value('3', '警告');
-		o.value('4', '信息');
-		o.value('5', '调试');
+		o = s.option(form.ListValue, 'log_level', _("Log level"));
+		o.value('0', _("Close"));
+		o.value('1', _("Fatal"));
+		o.value('2', _("Error"));
+		o.value('3', _("Warning"));
+		o.value('4', _("Info"));
+		o.value('5', _("Debug"));
 		o.default = '4';
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'extra_args', '额外参数',
-			'传递给 udp2raw 的额外原始命令行参数。');
+		o = s.option(form.Value, 'extra_args', _("Extra arguments"),
+			_("Additional raw command-line arguments passed to udp2raw."));
 		o.modalonly = true;
 
 		return m.render();

@@ -1,6 +1,6 @@
 {
 	"admin/network/udp2raw-ultra": {
-		"title": "UDP2RAW",
+		"title": "UDP Traffic Obfuscation",
 		"order": 60,
 		"action": {
 			"type": "view",

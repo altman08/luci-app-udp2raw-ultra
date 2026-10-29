@@ -4,7 +4,7 @@
 
 把 UDP 流量伪装成加密的 FakeTCP / UDP / ICMP 流量，用于绕过运营商对 UDP 的 QoS 限速或封锁。专为搭配 WireGuard / AmneziaWG 设计。
 
-> 本插件是官方 `luci-app-udp2raw` 的替代品，采用新版 JS 客户端渲染的 LuCI 界面（适配 OpenWrt 24.10 / 25.12），解决官方包在新固件上不适配的问题。全中文界面，支持多规则列表。
+> 本插件是官方 `luci-app-udp2raw` 的替代品，采用新版 JS 客户端渲染的 LuCI 界面（适配 OpenWrt 24.10 / 25.12），解决官方包在新固件上不适配的问题。支持简体中文语言包和多规则列表。
 
 ## 界面预览
 
@@ -35,13 +35,15 @@
 APK 固件（独立脚本生成的包未签名）：
 
 ```sh
-apk add --allow-untrusted ./luci-app-udp2raw-ultra-1.3.3-r15.apk
+apk add --allow-untrusted ./luci-app-udp2raw-ultra-1.3.3-r16.apk
+# 使用中文界面时，同时安装 Release 中的 luci-i18n-udp2raw-ultra-zh-cn APK
 ```
 
 IPK 固件：
 
 ```sh
 opkg install ./luci-app-udp2raw-ultra_*.ipk
+# 使用中文界面时，同时安装 Release 中的 luci-i18n-udp2raw-ultra-zh-cn IPK
 ```
 
 请使用与当前固件匹配的软件源安装依赖。插件会安装 `/etc/init.d/udp2raw` 和 `/etc/config/udp2raw`，安装前请先卸载其他管理相同服务的 LuCI 插件，并备份已有配置。
@@ -52,7 +54,7 @@ opkg install ./luci-app-udp2raw-ultra_*.ipk
 rm -f /tmp/luci-modulecache/* /tmp/luci-indexcache*
 ```
 
-然后进入 **网络 → UDP2RAW**。
+然后进入 **网络 → UDP 流量伪装**（安装简体中文语言包后）。
 
 ## 使用教程
 
@@ -64,7 +66,7 @@ udp2raw 的工作原理：**有公网 IP 的一方跑服务端，NAT 后面的�
 
 #### 服务端配置（B 端，有公网的路由器）
 
-进入 **网络 → UDP2RAW**，点**添加规则**：
+进入 **网络 → UDP 流量伪装**，点**添加规则**：
 
 | 选项 | 填写 | 说明 |
 |------|------|------|
@@ -163,20 +165,18 @@ src-link udp2raw_ultra /path/to/luci-app-udp2raw-ultra
 
 ## GitHub Actions 打包发布
 
-提交并推送到本 fork 后，在 **Actions → Release OpenWrt packages → Run workflow** 中填写发布标签（例如 `v1.3.3-r15`），选择是否标记为预发布，然后启动流水线。
+提交并推送到本 fork 后，在 **Actions → Release OpenWrt packages → Run workflow** 中填写发布标签（例如 `v1.3.3-r16`），选择是否标记为预发布，然后启动流水线。
 
-流水线参考 `luci-app-shellinabox`，使用 OpenWrt 官方 SDK Action，针对 OpenWrt `25.12.5` 的以下架构构建：
+流水线参考 `luci-proto-n2n` 的 SDK 构建及发布流程、`luci-app-udpspeeder` 的通用前端与语言包收集方式。使用 OpenWrt 官方 SDK Action，仅选择 `x86_64` 作为构建环境：
 
-- `x86_64`
-- `aarch64_cortex-a53`（PonWrt AN7581 / AN7583）
-- `aarch64_cortex-a72`
-- `aarch64_generic`
-- `arm_cortex-a7`
-- `arm_cortex-a9`
+- OpenWrt `24.10.5`：生成 IPK 前端和简体中文语言包。
+- OpenWrt `25.12.5`：生成 APK 前端和简体中文语言包。
 
-每个架构生成 `udp2raw` 后端和 `luci-app-udp2raw-ultra` 前端安装包，包格式由 SDK 决定（25.12 使用 APK）。安装包文件名带 SDK 版本和架构，并附 SHA-256 校验文件。全部构建成功后，流水线自动创建或更新 GitHub Release；也可以从每个任务的 Artifacts 下载，构建失败时会上传日志。
+前端只有 JS、Shell，语言包只有翻译数据，均为 `all` / `noarch` 通用包，可用于相应系统版本的不同架构（包括 AN7581 / AN7583）。每次发布共四个安装包：`luci-app-udp2raw-ultra` 的 APK、IPK，以及 `luci-i18n-udp2raw-ultra-zh-cn` 的 APK、IPK。保留 SDK 原始文件名，不附加构建架构；另提供各格式的 SHA-256 校验文件。全部构建成功后自动创建或更新 GitHub Release；也可以从 Artifacts 下载，构建失败时上传日志。
 
-无需额外配置发布 Token，使用仓库自带的 `GITHUB_TOKEN`。在 fork 的 Actions 页面启用工作流后即可运行。安装时仍需从与固件匹配的软件源获取 `firewall4`、`ip-full`、`luci-base` 等依赖；使用 OpenWrt SDK 编译的后端也需与设备系统和架构兼容。
+官方 SDK feeds 缺少 `udp2raw` 包定义，因此 CI 临时 feed 使用固定 ImmortalWrt 提交中的后端配方，并校验 SHA-256，让 SDK 正常处理依赖。后端和其他依赖不会上传到 Release。固件编译仍通过原有 feeds 自动选择依赖。
+
+无需额外配置发布 Token，使用仓库自带的 `GITHUB_TOKEN`。在 fork 的 Actions 页面启用工作流后即可运行。安装时仍需从与固件匹配的软件源获取 `udp2raw`、`firewall4`、`ip-full`、`luci-base` 等依赖；后端需与设备系统和架构兼容。
 
 ## 不使用 SDK 直接打包
 
@@ -184,12 +184,12 @@ src-link udp2raw_ultra /path/to/luci-app-udp2raw-ultra
 
 ```sh
 APK_TOOL=/root/.local/bin/apk.static ./build-apk.sh
-# 产物：dist/luci-app-udp2raw-ultra-1.3.3-r15.apk
+# 产物：dist/luci-app-udp2raw-ultra-1.3.3-r16.apk
 ```
 
 默认使用 PATH 中的 `apk`，也可以用 `APK_TOOL` 指定工具路径、`DIST_DIR` 指定输出目录。脚本会写入 OpenWrt 的服务安装/卸载钩子及配置文件清单，并校验生成的 APK。此方式生成未签名的插件包，不包含 `udp2raw` 等依赖的二进制文件。
 
-IPK 仍可使用 `bash build-ipk.sh` 生成。两种包可以同时保存在 `dist/`，重新打包不会清空该目录。
+IPK 仍可使用 `bash build-ipk.sh` 生成。两种包可以同时保存在 `dist/`，重新打包不会清空该目录。这两个独立脚本只生成前端；语言包由 SDK 流水线生成，未安装语言包时界面显示英文。
 
 ## 文件结构
 

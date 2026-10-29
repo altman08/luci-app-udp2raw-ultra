@@ -1,0 +1,272 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-udp2raw-ultra\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "(No relevant logs yet)"
+msgstr "（暂无相关日志）"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Add rule"
+msgstr "添加规则"
+
+msgid "Additional raw command-line arguments passed to udp2raw."
+msgstr "传递给 udp2raw 的额外原始命令行参数。"
+
+msgid "Address family"
+msgstr "地址族"
+
+msgid "Authentication mode"
+msgstr "认证方式"
+
+msgid "Automatic (currently %s)"
+msgstr "自动（当前 %s）"
+
+msgid "Automatic firewall (server)"
+msgstr "自动防火墙（服务端）"
+
+msgid "Bypass proxy for DNS queries"
+msgstr "DNS 解析绕过代理"
+
+msgid "Check interval (seconds)"
+msgstr "检测间隔（秒）"
+
+msgid "Cipher mode"
+msgstr "加密方式"
+
+msgid "Client"
+msgstr "客户端"
+
+msgid "Client only. Address of the local UDP tunnel endpoint, usually 127.0.0.1."
+msgstr "仅客户端。本地暴露隧道 UDP 端点的地址，通常为 127.0.0.1。"
+
+msgid "Client only. Peer IP address or hostname. Hostnames are resolved automatically and monitored for changes."
+msgstr "仅客户端。对端的 IP 或域名。填域名时会自动解析并监控其变化。"
+
+msgid "Client only. Select the DNS record type for peer hostnames (IPv4=A, IPv6=AAAA). Ignored for IP literals."
+msgstr "仅客户端。解析对端域名时选择记录类型（IPv4=A 记录，IPv6=AAAA 记录）。对端为 IP 时忽略。"
+
+msgid "Client only. The remote udp2raw port (the server listening port)."
+msgstr "仅客户端。对端上的 udp2raw 端口（即服务端的监听端口）。"
+
+msgid "Client only. When the default route points into a tunnel (e.g. full-tunnel WireGuard), traffic to the udp2raw server can enter the tunnel and cause a routing deadlock. Add a /32 (IPv4) or /128 (IPv6) static route for the server IP through the physical WAN. Rules appear on Network → Static Routes with the udp2raw_ prefix. Only needed with full-tunnel routing; otherwise leave disabled."
+msgstr "仅客户端。当本机默认路由整体指向隧道（如 WireGuard 全局代理）时，去 udp2raw 服务端的流量会进入隧道，形成死锁。勾选后自动为服务端 IP 写入走物理 WAN 的 /32(/128) 静态路由，绕过隧道。规则可在「网络 → 静态路由」页面看到（udp2raw_ 前缀）。仅全局代理场景需要；普通场景请保持关闭。"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "DNS server"
+msgstr "解析 DNS"
+
+msgid "DNS server used to resolve peer hostnames. An IPv4 address (e.g. 1.1.1.1) can also resolve IPv6 (AAAA) records. An IPv6 DNS server requires working IPv6 connectivity. Leave empty to use system DNS. Failed queries fall back to system DNS."
+msgstr "用于解析对端域名的 DNS 服务器。建议填 IPv4 地址（如 1.1.1.1），同样能解析 IPv6（AAAA）记录；若填 IPv6 DNS，则本机必须有 IPv6 网络否则解析失败。留空则使用系统默认 DNS。解析失败时会自动降级到系统默认 DNS 重试。"
+
+msgid "Debug"
+msgstr "调试"
+
+msgid "Each rule is an independent udp2raw instance. The server has a public IP/IPv6 address; the client is behind NAT."
+msgstr "每条规则是一个独立的 udp2raw 实例。服务端 = 有公网 IP/IPv6 的一方；客户端 = 处于 NAT 后的一方。"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Enable --fix-gro. Try this if large packet transfers fail."
+msgstr "启用 --fix-gro。大包传输异常时可尝试开启。"
+
+msgid "Encapsulate UDP traffic as FakeTCP/UDP/ICMP to bypass UDP throttling or blocking. Each rule runs as an independent server or client. Works best with WireGuard/AmneziaWG."
+msgstr "将 UDP 流量伪装成 FakeTCP/UDP/ICMP，绕过 UDP QoS 限速或封锁。可添加多条规则，每条独立作为服务端或客户端。配合 WireGuard/AmneziaWG 使用效果最佳。"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "Extra arguments"
+msgstr "额外参数"
+
+msgid "FakeTCP sequence mode (0-4). Mode 3 closely simulates a real TCP handshake."
+msgstr "faketcp 的 seq 模式（0-4）。3 模拟接近真实的 TCP 握手过程。"
+
+msgid "Fatal"
+msgstr "致命"
+
+msgid "Fix GRO"
+msgstr "修复 GRO"
+
+msgid "Forward address"
+msgstr "转发到地址"
+
+msgid "Forward port"
+msgstr "转发到端口"
+
+msgid "Generate"
+msgstr "生成"
+
+msgid "Global settings"
+msgstr "全局设置"
+
+msgid "How often to resolve client peer hostnames again. The tunnel restarts automatically when the peer IP changes."
+msgstr "多久重新解析一次客户端域名，若对端 IP 变化则自动重启隧道。"
+
+msgid "IPv4 only"
+msgstr "仅 IPv4"
+
+msgid "IPv6 only"
+msgstr "仅 IPv6"
+
+msgid "Info"
+msgstr "信息"
+
+msgid "Listen port"
+msgstr "监听端口"
+
+msgid "Listening :%s → %s:%s"
+msgstr "监听 :%s → %s:%s"
+
+msgid "Loading…"
+msgstr "加载中…"
+
+msgid "Local listen address"
+msgstr "本地监听地址"
+
+msgid "Log level"
+msgstr "日志级别"
+
+msgid "Log line limit"
+msgstr "日志保留条数"
+
+msgid "Maximum number of log lines retained for each rule."
+msgstr "每条规则最多保留的日志行数。"
+
+msgid "Mode"
+msgstr "模式"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Normalize TTL (server)"
+msgstr "TTL 归一化（服务端）"
+
+msgid "Operation failed: %s"
+msgstr "操作失败：%s"
+
+msgid "Packet encapsulation mode; must match on both ends."
+msgstr "数据包伪装方式，两端必须一致。"
+
+msgid "Pass --retry-on-error so udp2raw keeps retrying instead of exiting on errors."
+msgstr "传入 --retry-on-error，让 udp2raw 出错时持续重试而非退出。"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Peer address"
+msgstr "对端地址"
+
+msgid "Peer port"
+msgstr "对端端口"
+
+msgid "Physical WAN interface used to bypass proxies for DNS queries. Leave empty for automatic detection (wan by default). Select an interface if WAN was renamed or multiple WANs exist."
+msgstr "「DNS 解析绕过代理」使用的物理外网接口。留空为自动检测（默认 wan 接口）。若外网口改过名或有多 WAN，请手动指定。"
+
+msgid "Pre-shared password; must match on both ends. Click Generate to create a random password."
+msgstr "预共享密码，两端必须完全一致。点击「生成」可自动创建随机密码。"
+
+msgid "Raw mode"
+msgstr "伪装模式"
+
+msgid "Recent 100 relevant log events (frequent noise is filtered out)."
+msgstr "最近 100 条有意义的日志事件（已过滤高频噪音）。"
+
+msgid "Resolved address: %s"
+msgstr "当前解析：%s"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Restarting"
+msgstr "重启中"
+
+msgid "Retry on error"
+msgstr "出错重试"
+
+msgid "Route server via WAN"
+msgstr "服务端例外路由"
+
+msgid "Rule log: %s"
+msgstr "规则日志：%s"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Send queries to the configured DNS server through the physical WAN, bypassing proxies such as WireGuard. This prevents a disconnected tunnel from blocking DNS resolution and reconnection. Keep enabled unless custom routing requires otherwise."
+msgstr "强制发往上面「解析 DNS」的查询走物理 WAN 出口，不经过任何代理（如 WireGuard）。避免隧道断开后因解析走隧道而无法重连的死锁。除非有特殊分流需求，建议保持开启。"
+
+msgid "Sequence mode"
+msgstr "Seq 模式"
+
+msgid "Server"
+msgstr "服务端"
+
+msgid "Server only. Address of the actual local UDP service (e.g. 127.0.0.1 for local WireGuard)."
+msgstr "仅服务端。要转发到的真实本地 UDP 服务地址（如本地 WireGuard 填 127.0.0.1）。"
+
+msgid "Server only. Automatically add IPv4 and IPv6 allow rules to the system firewall. Rules appear on the Firewall page and are removed when this option is disabled and saved. Uses fw4 UCI configuration, compatible with iptables-nft and iptables-legacy environments."
+msgstr "仅服务端。勾选后自动向系统防火墙写入放行规则（IPv4 + IPv6），无需手动配置。规则会出现在系统「防火墙」页面，取消勾选并保存会自动清除。使用 fw4 UCI 方式，兼容 iptables-nft 和 iptables-legacy 环境。"
+
+msgid "Server only. Port of the actual UDP service (e.g. 51820 for WireGuard/AmneziaWG)."
+msgstr "仅服务端。真实 UDP 服务端口（如 WireGuard/AmneziaWG 的 51820）。"
+
+msgid "Server: public FakeTCP/UDP/ICMP port. Client: local UDP port used by applications such as WireGuard."
+msgstr "服务端：对外监听的 FakeTCP/UDP/ICMP 端口。客户端：本地应用（如 WireGuard 对端端点）连接的 UDP 端口。"
+
+msgid "Set outgoing IPv4 TTL and IPv6 hop limit to 64 to hide tunnel forwarding, making traffic appear locally originated to avoid proxy/tunnel detection by ISP DPI. Only needed on the server egress; harmless on clients. Select the egress device with WAN interface."
+msgstr "将出口包的 TTL（IPv4）和 hoplimit（IPv6）强制设为 64，抹除隧道中转痕迹，使出口流量看起来像本地直发，避免被运营商 DPI 识别为代理/隧道流量。仅服务端出口需要，客户端开启无副作用。使用「外网接口」字段指定出口设备。"
+
+msgid "Socket buffer (KB)"
+msgstr "Socket 缓冲区（KB）"
+
+msgid "Socket buffer size, 10-10240 KB. Larger is not always better. Default: 1024."
+msgstr "Socket 缓冲区大小，范围 10-10240。并非越大越好，默认 1024。"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Starting"
+msgstr "启动中"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Stopping"
+msgstr "停止中"
+
+msgid "Target"
+msgstr "目标"
+
+msgid "Tunnel rules"
+msgstr "隧道规则"
+
+msgid "UDP Traffic Obfuscation"
+msgstr "UDP 流量伪装"
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "View logs"
+msgstr "查看日志"
+
+msgid "WAN interface"
+msgstr "外网接口"
+
+msgid "Warning"
+msgstr "警告"
